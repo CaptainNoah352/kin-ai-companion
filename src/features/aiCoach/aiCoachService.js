@@ -1,4 +1,5 @@
 import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "../safety/safetyRouter.js";
+import { appSpaceIds, normalizeAppSpace } from "../appSpaces/appSpaceService.js";
 import {
   buildModeSuggestion,
   classifySupportModes,
@@ -28,6 +29,8 @@ export function createCoachReply({
   supportModes,
   manualChatMode = "Support",
   suggestedChatMode,
+  activeAppSpace = appSpaceIds.wellness,
+  bridgeContext,
 }) {
   const safety = classifySafety(text, { source: "ai_chat" });
   if (shouldPauseForSafety(safety)) {
@@ -37,6 +40,7 @@ export function createCoachReply({
   const modeSuggestion = buildModeSuggestion(text, { manualChatMode, latestCheckIn });
   const resolvedSupportModes = Array.isArray(supportModes) && supportModes.length ? supportModes : modeSuggestion.modes;
   const resolvedSuggestedChatMode = suggestedChatMode || modeSuggestion.suggestedChatMode;
+  const resolvedAppSpace = normalizeAppSpace(activeAppSpace);
   const boundary = classifyCoachBoundary(text);
   if (boundary === "diagnosis") {
     return {
@@ -78,8 +82,8 @@ export function createCoachReply({
   }
 
   const recommendedModuleIds = recommendModules({ text, latestCheckIn });
-  const reflection = buildReflection(text, mood, latestCheckIn, memory, resolvedSupportModes);
-  const nextStep = buildNextStep(text, latestCheckIn, resolvedSupportModes);
+  const reflection = buildReflection(text, mood, latestCheckIn, memory, resolvedSupportModes, resolvedAppSpace, bridgeContext);
+  const nextStep = buildNextStep(text, latestCheckIn, resolvedSupportModes, resolvedAppSpace);
   const module = recommendedModuleIds[0] || "grounding-54321";
   const modeLine = modeSuggestion.emotionalAvoidance
     ? "\n\nThis may be procrastination with pressure, shame, or anxiety attached. We can lower the emotional load and still choose one tiny action."
@@ -90,10 +94,11 @@ export function createCoachReply({
     content: `${reflection}${modeLine}\n\nA useful next step: ${nextStep}\n\nTry this in the app: ${moduleLabel(module)}, because it gives you a structured way to work with this without needing to solve everything at once.`,
     safetyLevel: safety.level,
     recommendedModuleIds,
-    supportModes: resolvedSupportModes,
-    suggestedChatMode: resolvedSuggestedChatMode,
-    explanation: "Response uses reflection, one practical step, and an in-app tool recommendation.",
-  };
+      supportModes: resolvedSupportModes,
+      suggestedChatMode: resolvedSuggestedChatMode,
+      activeAppSpace: resolvedAppSpace,
+      explanation: "Response uses reflection, one practical step, and an in-app tool recommendation.",
+    };
 }
 
 export function recommendModules({ text = "", latestCheckIn } = {}) {
@@ -123,30 +128,32 @@ export function recommendModules({ text = "", latestCheckIn } = {}) {
   return [...new Set(modules)].slice(0, 3);
 }
 
-function buildReflection(text, mood, latestCheckIn, memory, supportModes = []) {
+function buildReflection(text, mood, latestCheckIn, memory, supportModes = [], activeAppSpace = appSpaceIds.wellness, bridgeContext) {
+  const bridgeLine = buildBridgeLine(activeAppSpace, bridgeContext);
   const clean = text.trim();
   if (detectProcrastinationAsEmotionalAvoidance(text)) {
-    return "I am hearing both avoidance and a feeling load around it. That is common when a task starts carrying shame, pressure, or dread.";
+    return `I am hearing both avoidance and a feeling load around it. That is common when a task starts carrying shame, pressure, or dread.${bridgeLine}`;
   }
   if (supportModes.includes(supportModeIds.adhdFocus) || supportModes.includes(supportModeIds.taskStart)) {
-    return "I am hearing an executive-function problem, not a character problem. We can make the start smaller and more concrete.";
+    return `I am hearing an executive-function problem, not a character problem. We can make the start smaller and more concrete.${bridgeLine}`;
   }
   if (memory?.supportStyle) {
     const style = memory.supportStyle.slice(0, 120);
     if (mood) {
-      return `I am here with you, and I will keep your preferred support style in mind: ${style}. I am also hearing a ${mood.toLowerCase()} tone today.`;
+      return `I am here with you, and I will keep your preferred support style in mind: ${style}. I am also hearing a ${mood.toLowerCase()} tone today.${bridgeLine}`;
     }
-    return `I am here with you, and I will keep your preferred support style in mind: ${style}. What you shared sounds worth slowing down with.`;
+    return `I am here with you, and I will keep your preferred support style in mind: ${style}. What you shared sounds worth slowing down with.${bridgeLine}`;
   }
-  if (mood) return `I am hearing that today has a ${mood.toLowerCase()} tone, and this is taking some real attention.`;
+  if (mood) return `I am hearing that today has a ${mood.toLowerCase()} tone, and this is taking some real attention.${bridgeLine}`;
   if (latestCheckIn?.primaryEmotion) {
-    return `I am hearing ${latestCheckIn.primaryEmotion.toLowerCase()} in what you wrote.`;
+    return `I am hearing ${latestCheckIn.primaryEmotion.toLowerCase()} in what you wrote.${bridgeLine}`;
   }
-  if (clean.length < 80) return "I am hearing that there is something here worth slowing down with.";
-  return "I am hearing a mix of pressure and meaning in what you shared.";
+  if (activeAppSpace === appSpaceIds.adhd) return `I am reading this from the ADHD / Focus side, so we can turn it into a smaller next action.${bridgeLine}`;
+  if (clean.length < 80) return `I am hearing that there is something here worth slowing down with.${bridgeLine}`;
+  return `I am hearing a mix of pressure and meaning in what you shared.${bridgeLine}`;
 }
 
-function buildNextStep(text, latestCheckIn, supportModes = []) {
+function buildNextStep(text, latestCheckIn, supportModes = [], activeAppSpace = appSpaceIds.wellness) {
   const lower = text.toLowerCase();
   if (supportModes.includes(supportModeIds.procrastination)) return "name the task you are avoiding, then do one visible action for five minutes.";
   if (supportModes.includes(supportModeIds.taskStart)) return "make the first step so small it can be done in under one minute, then start a five-minute timer.";
@@ -158,7 +165,24 @@ function buildNextStep(text, latestCheckIn, supportModes = []) {
   if (/sleep|tired|insomnia/.test(lower)) return "choose one small wind-down cue you can repeat tonight.";
   if (/relationship|argument|boundary/.test(lower)) return "write one sentence that starts with what you feel and one sentence that names what you need.";
   if (latestCheckIn?.stressScore >= 7) return "pick the smallest task or care action that would reduce pressure by 5%.";
+  if (activeAppSpace === appSpaceIds.adhd) return "write the first visible action, remove one distraction cue, and start for five minutes.";
   return "name the feeling, then choose one concrete action that can happen in the next ten minutes.";
+}
+
+function buildBridgeLine(activeAppSpace, bridgeContext) {
+  if (!bridgeContext?.sharedSignals) return "";
+  const missedGoal = bridgeContext.sharedSignals.missedGoals?.[0];
+  const recentStart = bridgeContext.sharedSignals.recentStart?.[0];
+  if (activeAppSpace === appSpaceIds.wellness && missedGoal?.title) {
+    return ` Your ADHD side shows "${missedGoal.title}" may need no-shame recovery rather than more pressure.`;
+  }
+  if (activeAppSpace === appSpaceIds.adhd && bridgeContext.sharedSignals.latestMood) {
+    return ` Your Wellness side shows ${String(bridgeContext.sharedSignals.latestMood).toLowerCase()} may be part of the load.`;
+  }
+  if (activeAppSpace === appSpaceIds.adhd && recentStart?.task) {
+    return ` Your recent Start history points to "${recentStart.task}" as a useful place to begin.`;
+  }
+  return "";
 }
 
 function moduleLabel(moduleId) {

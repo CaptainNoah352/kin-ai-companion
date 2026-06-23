@@ -54,6 +54,8 @@ test("data map keeps model training off for sensitive categories", () => {
     [
       "checkIns",
       "messages",
+      "wellnessMessages",
+      "adhdMessages",
       "goals",
       "startSessions",
       "weeklyReviews",
@@ -63,7 +65,7 @@ test("data map keeps model training off for sensitive categories", () => {
       "appLock",
     ].includes(category.key),
   );
-  assert.ok(sensitive.length >= 9);
+  assert.ok(sensitive.length >= 11);
   for (const category of sensitive) {
     assert.equal(category.usedForModelTraining, false);
   }
@@ -78,6 +80,8 @@ test("mental health deletion clears local content including memory", () => {
   };
 
   writeStorage(storageKeys.messages, [{ role: "user", content: "hello" }]);
+  writeStorage(storageKeys.wellnessMessages, [{ role: "user", content: "wellness hello" }]);
+  writeStorage(storageKeys.adhdMessages, [{ role: "user", content: "adhd hello" }]);
   writeStorage(storageKeys.goals, [{ title: "private goal" }]);
   writeStorage(storageKeys.startSessions, [{ task: "private task" }]);
   writeStorage(storageKeys.weeklyReviews, [{ wins: "private review" }]);
@@ -92,6 +96,8 @@ test("mental health deletion clears local content including memory", () => {
   deleteMentalHealthContent();
 
   assert.equal(readStorage(storageKeys.messages, null), null);
+  assert.equal(readStorage(storageKeys.wellnessMessages, null), null);
+  assert.equal(readStorage(storageKeys.adhdMessages, null), null);
   assert.equal(readStorage(storageKeys.goals, null), null);
   assert.equal(readStorage(storageKeys.startSessions, null), null);
   assert.equal(readStorage(storageKeys.weeklyReviews, null), null);
@@ -116,6 +122,8 @@ test("delete all data clears app lock", () => {
 
   writeStorage(storageKeys.appLock, { enabled: true, verifier: "hash", salt: "salt" });
   writeStorage(storageKeys.messages, [{ role: "user", content: "hello" }]);
+  writeStorage(storageKeys.wellnessMessages, [{ role: "user", content: "wellness hello" }]);
+  writeStorage(storageKeys.adhdMessages, [{ role: "user", content: "adhd hello" }]);
   writeStorage(storageKeys.memory, { aboutMe: "private profile", summaries: [] });
   writeStorage(storageKeys.installHintDismissed, true);
   writeStorage(storageKeys.googleSession, { email: "friend@example.com" });
@@ -126,6 +134,8 @@ test("delete all data clears app lock", () => {
 
   assert.equal(readStorage(storageKeys.appLock, null), null);
   assert.equal(readStorage(storageKeys.messages, null), null);
+  assert.equal(readStorage(storageKeys.wellnessMessages, null), null);
+  assert.equal(readStorage(storageKeys.adhdMessages, null), null);
   assert.equal(readStorage(storageKeys.memory, null), null);
   assert.equal(readStorage(storageKeys.installHintDismissed, null), null);
   assert.equal(readStorage(storageKeys.googleSession, null), null);

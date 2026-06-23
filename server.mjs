@@ -9,6 +9,7 @@ import cors from "cors";
 import { AI_COACH_SYSTEM_PROMPT } from "./src/features/aiCoach/aiCoachPrompts.js";
 import { classifyCoachBoundary, createCoachReply, recommendModules } from "./src/features/aiCoach/aiCoachService.js";
 import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "./src/features/safety/safetyRouter.js";
+import { buildAppSpacePromptContext } from "./src/features/appSpaces/appSpaceService.js";
 import { buildModeSuggestion, buildSupportModePromptContext } from "./src/features/supportModes/supportModeService.js";
 import { getRuntimeStatus, safetyRouterVersion } from "./runtimeStatus.mjs";
 
@@ -92,7 +93,18 @@ function timingSafeStringEqual(left, right) {
   return nodeTimingSafeEqual(leftBuffer, rightBuffer);
 }
 
-async function chatReply({ messages, mood, latestCheckIn, memory, region, supportModes, manualChatMode = "Support", suggestedChatMode }) {
+async function chatReply({
+  messages,
+  mood,
+  latestCheckIn,
+  memory,
+  region,
+  supportModes,
+  manualChatMode = "Support",
+  suggestedChatMode,
+  activeAppSpace = "wellness",
+  bridgeContext = null,
+}) {
   const latest = messages.at(-1)?.content || "";
   const safety = classifySafety(latest, { source: "ai_chat" });
 
@@ -116,6 +128,8 @@ async function chatReply({ messages, mood, latestCheckIn, memory, region, suppor
       supportModes: resolvedSupportModes,
       manualChatMode,
       suggestedChatMode: resolvedSuggestedChatMode,
+      activeAppSpace,
+      bridgeContext,
     });
   }
 
@@ -134,6 +148,7 @@ async function chatReply({ messages, mood, latestCheckIn, memory, region, suppor
       manualChatMode,
       suggestedChatMode: resolvedSuggestedChatMode,
     }),
+    buildAppSpacePromptContext({ activeAppSpace, bridgeContext }),
     "Keep the response concise. Recommend app tools by name when useful.",
   ];
 
@@ -148,6 +163,7 @@ async function chatReply({ messages, mood, latestCheckIn, memory, region, suppor
     recommendedModuleIds: recommendModules({ text: latest, latestCheckIn }),
     supportModes: resolvedSupportModes,
     suggestedChatMode: resolvedSuggestedChatMode,
+    activeAppSpace,
     explanation: `Server generated response with ${provider} after safety and boundary checks.`,
   };
 }
@@ -286,12 +302,25 @@ app.post("/api/chat", async (req, res) => {
     const supportModes = Array.isArray(req.body.supportModes) ? req.body.supportModes : [];
     const manualChatMode = typeof req.body.manualChatMode === "string" ? req.body.manualChatMode : "Support";
     const suggestedChatMode = typeof req.body.suggestedChatMode === "string" ? req.body.suggestedChatMode : "";
+    const activeAppSpace = typeof req.body.activeAppSpace === "string" ? req.body.activeAppSpace : "wellness";
+    const bridgeContext = req.body.bridgeContext && typeof req.body.bridgeContext === "object" ? req.body.bridgeContext : null;
 
     if (!messages.length) {
       return res.status(400).json({ error: "No messages were provided." });
     }
 
-    const reply = await chatReply({ messages, mood, latestCheckIn, memory, region, supportModes, manualChatMode, suggestedChatMode });
+    const reply = await chatReply({
+      messages,
+      mood,
+      latestCheckIn,
+      memory,
+      region,
+      supportModes,
+      manualChatMode,
+      suggestedChatMode,
+      activeAppSpace,
+      bridgeContext,
+    });
     res.json(reply);
   } catch (error) {
     console.error(error);

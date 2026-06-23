@@ -7,6 +7,8 @@ export function deleteJournalOnly() {
 export function deleteMentalHealthContent() {
   clearStoredKinData([
     storageKeys.messages,
+    storageKeys.wellnessMessages,
+    storageKeys.adhdMessages,
     storageKeys.goals,
     storageKeys.startSessions,
     storageKeys.weeklyReviews,

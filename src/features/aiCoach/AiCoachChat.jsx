@@ -35,6 +35,9 @@ export function AiCoachChat({
   consent,
   chatMode = "Support",
   onChatModeChange,
+  activeAppSpace = "wellness",
+  appTitle = "Chat",
+  bridgeContext = null,
 }) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -114,6 +117,7 @@ export function AiCoachChat({
       manualChatMode: chatMode,
       suggestedChatMode: suggestion.suggestedChatMode,
       emotionalAvoidance: suggestion.emotionalAvoidance,
+      activeAppSpace,
     };
     const nextMessages = [...visibleMessages, userMessage];
     setMessages(nextMessages);
@@ -129,6 +133,8 @@ export function AiCoachChat({
       supportModes: suggestion.modes,
       manualChatMode: chatMode,
       suggestedChatMode: suggestion.suggestedChatMode,
+      activeAppSpace,
+      bridgeContext,
     });
 
     try {
@@ -147,6 +153,7 @@ export function AiCoachChat({
           recommendedModuleIds: data.recommendedModuleIds || [],
           supportModes: data.supportModes || suggestion.modes,
           suggestedChatMode: data.suggestedChatMode || suggestion.suggestedChatMode,
+          activeAppSpace: data.activeAppSpace || activeAppSpace,
         },
       ]);
     } catch {
@@ -159,6 +166,8 @@ export function AiCoachChat({
         supportModes: suggestion.modes,
         manualChatMode: chatMode,
         suggestedChatMode: suggestion.suggestedChatMode,
+        activeAppSpace,
+        bridgeContext,
       });
       setMessages((current) => [
         ...current,
@@ -169,6 +178,7 @@ export function AiCoachChat({
           recommendedModuleIds: fallback.recommendedModuleIds || [],
           supportModes: fallback.supportModes || suggestion.modes,
           suggestedChatMode: fallback.suggestedChatMode || suggestion.suggestedChatMode,
+          activeAppSpace: fallback.activeAppSpace || activeAppSpace,
         },
       ]);
     } finally {
@@ -179,7 +189,7 @@ export function AiCoachChat({
   return (
     <section className="surface-section coach-section">
       <div className="section-heading">
-        <h2>Chat</h2>
+        <h2>{appTitle}</h2>
         <p>
           <ShieldAlert size={15} /> AI support, not therapy. Not for emergencies.
         </p>

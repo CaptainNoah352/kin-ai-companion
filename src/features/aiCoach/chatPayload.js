@@ -10,6 +10,8 @@ export function buildCoachChatPayload({
   supportModes = [],
   manualChatMode = "Support",
   suggestedChatMode = "Support",
+  activeAppSpace = "wellness",
+  bridgeContext = null,
 }) {
   return {
     messages,
@@ -20,5 +22,7 @@ export function buildCoachChatPayload({
     supportModes: Array.isArray(supportModes) ? supportModes : [],
     manualChatMode,
     suggestedChatMode,
+    activeAppSpace,
+    bridgeContext,
   };
 }

@@ -24,6 +24,13 @@ import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
+import {
+  appSpaceIds,
+  appSpaceMeta,
+  buildAppBridgeContext,
+  createDefaultAppSpaceTabs,
+  normalizeAppSpace,
+} from "./features/appSpaces/appSpaceService.js";
 import { DailyCheckIn } from "./features/checkins/DailyCheckIn.jsx";
 import { getCheckInRecommendation, getLatestCheckIn } from "./features/checkins/checkInService.js";
 import { GoalsCenter } from "./features/goals/GoalsCenter.jsx";
@@ -75,9 +82,17 @@ const appLockSessionKey = "kin.v2.appLock.unlockedAt";
 const googleDriveTokenSessionKey = "kin.v2.googleDrive.accessToken";
 const autoSyncDebounceMs = 5000;
 
-const navItems = [
+const wellnessNavItems = [
   { id: "Home", label: "Home", icon: Home },
   { id: "Chat", label: "Chat", icon: MessageCircle },
+  { id: "Journal", label: "Journal", icon: PenLine },
+  { id: "Tools", label: "Tools", icon: Wrench },
+  { id: "Progress", label: "Progress", icon: BarChart3 },
+];
+
+const adhdNavItems = [
+  { id: "Home", label: "Home", icon: Home },
+  { id: "Chat", label: "Coach", icon: Brain },
   { id: "Goals", label: "Goals", icon: CheckCircle2 },
   { id: "Start", label: "Start", icon: Plus },
   { id: "Review", label: "Review", icon: BarChart3 },
@@ -85,15 +100,15 @@ const navItems = [
 
 const utilityNavItems = [
   { id: "Check In", label: "Check In", icon: Activity },
-  { id: "Journal", label: "Journal", icon: PenLine },
   { id: "Memory", label: "Memory", icon: UserRound },
-  { id: "Tools", label: "Tools", icon: Wrench },
-  { id: "Progress", label: "Progress", icon: BarChart3 },
   { id: "Safety", label: "Safety", icon: Shield },
   { id: "Privacy", label: "Privacy", icon: Lock },
 ];
 
-const phonePrimaryTabs = navItems;
+const appSpaceNavItems = {
+  [appSpaceIds.wellness]: wellnessNavItems,
+  [appSpaceIds.adhd]: adhdNavItems,
+};
 
 const defaultConsent = {
   userId: "local-user",
@@ -129,6 +144,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("Home");
   const [phoneDefaultApplied, setPhoneDefaultApplied] = useState(false);
   const [phoneMoreOpen, setPhoneMoreOpen] = useState(false);
+  const [activeAppSpace, setActiveAppSpaceState] = useStoredState(storageKeys.activeAppSpace, appSpaceIds.wellness);
+  const [appSpaceTabs, setAppSpaceTabs] = useStoredState(storageKeys.appSpaceTabs, createDefaultAppSpaceTabs());
   const [chatMode, setChatMode] = useState("Support");
   const [startSuggestedTask, setStartSuggestedTask] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState("grounding-54321");
@@ -136,7 +153,9 @@ export default function App() {
   const [apiMode, setApiMode] = useState("checking");
   const [consent, setConsent] = useStoredState(storageKeys.consent, defaultConsent);
   const [profile, setProfile] = useStoredState(storageKeys.profile, defaultProfile);
-  const [messages, setMessages] = useStoredState(storageKeys.messages, []);
+  const legacyMessages = readStorage(storageKeys.messages, []);
+  const [wellnessMessages, setWellnessMessages] = useStoredState(storageKeys.wellnessMessages, legacyMessages);
+  const [adhdMessages, setAdhdMessages] = useStoredState(storageKeys.adhdMessages, []);
   const [goals, setGoals] = useStoredState(storageKeys.goals, []);
   const [startSessions, setStartSessions] = useStoredState(storageKeys.startSessions, []);
   const [weeklyReviews, setWeeklyReviews] = useStoredState(storageKeys.weeklyReviews, []);
@@ -177,12 +196,36 @@ export default function App() {
   const region = profile?.region || "US";
   const normalizedAppLock = useMemo(() => createDefaultAppLock(appLock), [appLock]);
   const isPhoneShell = useMediaQuery("(max-width: 700px)");
+  const normalizedAppSpace = normalizeAppSpace(activeAppSpace);
+  const activeAppMeta = appSpaceMeta[normalizedAppSpace];
+  const navItems = appSpaceNavItems[normalizedAppSpace];
+  const messages = normalizedAppSpace === appSpaceIds.adhd ? adhdMessages : wellnessMessages;
+  const setMessages = normalizedAppSpace === appSpaceIds.adhd ? setAdhdMessages : setWellnessMessages;
+  const combinedMessages = useMemo(
+    () => [...(Array.isArray(wellnessMessages) ? wellnessMessages : []), ...(Array.isArray(adhdMessages) ? adhdMessages : [])],
+    [wellnessMessages, adhdMessages],
+  );
+  const bridgeContext = useMemo(
+    () =>
+      buildAppBridgeContext({
+        activeAppSpace: normalizedAppSpace,
+        wellnessMessages,
+        adhdMessages,
+        goals,
+        startSessions,
+        weeklyReviews,
+        checkIns,
+        memory,
+      }),
+    [normalizedAppSpace, wellnessMessages, adhdMessages, goals, startSessions, weeklyReviews, checkIns, memory],
+  );
 
   useEffect(() => {
     if (!isPhoneShell || phoneDefaultApplied) return;
+    setActiveAppSpaceState(appSpaceIds.adhd);
     setActiveTab("Chat");
     setPhoneDefaultApplied(true);
-  }, [isPhoneShell, phoneDefaultApplied]);
+  }, [isPhoneShell, phoneDefaultApplied, setActiveAppSpaceState]);
 
   useEffect(() => {
     if (userOpenRouter.apiKey) {
@@ -307,7 +350,10 @@ export default function App() {
   }, [
     consent,
     profile,
-    messages,
+    activeAppSpace,
+    appSpaceTabs,
+    wellnessMessages,
+    adhdMessages,
     goals,
     startSessions,
     weeklyReviews,
@@ -391,22 +437,58 @@ export default function App() {
       return;
     }
     setSelectedModuleId(moduleId);
-    selectTab("Tools");
+    openTabInAppSpace(appSpaceIds.wellness, "Tools");
   }
 
   function selectTab(tabId) {
     setActiveTab(tabId);
+    setAppSpaceTabs((current) => ({
+      ...createDefaultAppSpaceTabs(current),
+      [normalizedAppSpace]: tabId,
+    }));
+    setPhoneMoreOpen(false);
+  }
+
+  function openTabInAppSpace(spaceId, tabId) {
+    const nextSpace = normalizeAppSpace(spaceId);
+    setAppSpaceTabs((current) => ({
+      ...createDefaultAppSpaceTabs(current),
+      [normalizedAppSpace]: activeTab,
+      [nextSpace]: tabId,
+    }));
+    setActiveAppSpaceState(nextSpace);
+    setActiveTab(tabId);
+    setPhoneMoreOpen(false);
+  }
+
+  function switchAppSpace(spaceId) {
+    const nextSpace = normalizeAppSpace(spaceId);
+    setAppSpaceTabs((current) => ({
+      ...createDefaultAppSpaceTabs(current),
+      [normalizedAppSpace]: activeTab,
+    }));
+    setActiveAppSpaceState(nextSpace);
+    setActiveTab(createDefaultAppSpaceTabs(appSpaceTabs)[nextSpace] || "Home");
     setPhoneMoreOpen(false);
   }
 
   function openChatMode(mode = "Support") {
+    const nextSpace = ["Focus", "Goals", "Unblock"].includes(mode) ? appSpaceIds.adhd : appSpaceIds.wellness;
     setChatMode(mode);
-    selectTab("Chat");
+    openTabInAppSpace(nextSpace, "Chat");
   }
 
   function openStart(task = "") {
     setStartSuggestedTask(typeof task === "string" ? task : "");
-    selectTab("Start");
+    openTabInAppSpace(appSpaceIds.adhd, "Start");
+  }
+
+  function openGoals() {
+    openTabInAppSpace(appSpaceIds.adhd, "Goals");
+  }
+
+  function openReview() {
+    openTabInAppSpace(appSpaceIds.adhd, "Review");
   }
 
   function handleSafety(input, source = "ai_chat") {
@@ -433,7 +515,7 @@ export default function App() {
   function handleModuleComplete(module) {
     setCompletedModules((current) => [module, ...current]);
     setAuditEvents((events) => appendAuditEvent(events, "module_completed", { moduleId: module.moduleId }));
-    selectTab("Progress");
+    openTabInAppSpace(appSpaceIds.wellness, "Progress");
   }
 
   function saveSafetyPlan(plan) {
@@ -467,7 +549,10 @@ export default function App() {
     return {
       consent,
       profile,
-      messages,
+      activeAppSpace: normalizedAppSpace,
+      appSpaceTabs: createDefaultAppSpaceTabs(appSpaceTabs),
+      wellnessMessages,
+      adhdMessages,
       goals,
       startSessions,
       weeklyReviews,
@@ -521,7 +606,10 @@ export default function App() {
     restoreKinDataFromVault(kinData);
     setConsent(kinData.consent ?? defaultConsent);
     setProfile(kinData.profile ?? defaultProfile);
-    setMessages(kinData.messages ?? []);
+    setActiveAppSpaceState(normalizeAppSpace(kinData.activeAppSpace));
+    setAppSpaceTabs(createDefaultAppSpaceTabs(kinData.appSpaceTabs));
+    setWellnessMessages(kinData.wellnessMessages ?? kinData.messages ?? []);
+    setAdhdMessages(kinData.adhdMessages ?? []);
     setGoals(kinData.goals ?? []);
     setStartSessions(kinData.startSessions ?? []);
     setWeeklyReviews(kinData.weeklyReviews ?? []);
@@ -988,6 +1076,7 @@ export default function App() {
       runtime: {
         apiMode,
         currentTab: activeTab,
+        activeAppSpace: normalizedAppSpace,
       },
     };
   }
@@ -1000,7 +1089,9 @@ export default function App() {
 
   function deleteMentalHealthAndState() {
     deleteMentalHealthContent();
-    setMessages([]);
+    setWellnessMessages([]);
+    setAdhdMessages([]);
+    setAppSpaceTabs(createDefaultAppSpaceTabs());
     setGoals([]);
     setStartSessions([]);
     setWeeklyReviews([]);
@@ -1027,7 +1118,11 @@ export default function App() {
     deleteAllKinData();
     setConsent(defaultConsent);
     setProfile(null);
-    setMessages([]);
+    setActiveAppSpaceState(appSpaceIds.wellness);
+    setActiveTab("Home");
+    setWellnessMessages([]);
+    setAdhdMessages([]);
+    setAppSpaceTabs(createDefaultAppSpaceTabs());
     setGoals([]);
     setStartSessions([]);
     setWeeklyReviews([]);
@@ -1189,11 +1284,12 @@ export default function App() {
         recommendation={recommendation}
         carePlan={carePlan}
         goals={goals}
+        activeAppSpace={normalizedAppSpace}
         onStartCheckIn={() => selectTab("Check In")}
         onOpenChatMode={openChatMode}
-        onOpenGoals={() => selectTab("Goals")}
+        onOpenGoals={openGoals}
         onOpenStart={openStart}
-        onOpenReview={() => selectTab("Review")}
+        onOpenReview={openReview}
         onOpenJournal={() => selectTab("Journal")}
         onOpenMemory={() => selectTab("Memory")}
         onOpenTools={() => selectTab("Tools")}
@@ -1222,6 +1318,9 @@ export default function App() {
         userOpenRouter={userOpenRouter}
         chatMode={chatMode}
         onChatModeChange={setChatMode}
+        activeAppSpace={normalizedAppSpace}
+        appTitle={activeAppMeta.chatTitle}
+        bridgeContext={bridgeContext}
       />
     ),
     Goals: <GoalsCenter goals={goals} setGoals={setGoals} onOpenChatMode={openChatMode} onOpenStart={openStart} />,
@@ -1241,11 +1340,11 @@ export default function App() {
         weeklyReviews={weeklyReviews}
         setWeeklyReviews={setWeeklyReviews}
         onOpenChatMode={openChatMode}
-        onOpenGoals={() => selectTab("Goals")}
+        onOpenGoals={openGoals}
       />
     ),
     Journal: <JournalCenter entries={journalEntries} setEntries={setJournalEntries} />,
-    Memory: <MemoryCenter memory={memory} setMemory={setMemory} messages={messages} />,
+    Memory: <MemoryCenter memory={memory} setMemory={setMemory} messages={combinedMessages} />,
     Tools: (
       <InterventionRunner
         selectedModuleId={selectedModuleId}
@@ -1342,11 +1441,12 @@ export default function App() {
           <div className="phone-brand">
             <Leaf size={23} />
             <span>
-              <strong>Kin</strong>
+              <strong>Kin {activeAppMeta.shortLabel}</strong>
               <small>{activeTab}</small>
             </span>
           </div>
           <div className="phone-header-actions">
+            <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} compact />
             <ApiStatusBadge mode={apiMode} />
             <button
               className={phoneMoreOpen ? "phone-wellness-button active" : "phone-wellness-button"}
@@ -1354,7 +1454,7 @@ export default function App() {
               onClick={() => setPhoneMoreOpen((open) => !open)}
             >
               <MoreHorizontal size={17} />
-              <span>Wellness</span>
+              <span>More</span>
             </button>
             <SOSButton compact onClick={() => selectTab("Safety")} />
           </div>
@@ -1372,10 +1472,10 @@ export default function App() {
         </section>
 
         {phoneMoreOpen && (
-          <section className="phone-more-panel" aria-label="Wellness tools">
+          <section className="phone-more-panel" aria-label="Shared tools">
             <div className="phone-more-heading">
-              <strong>Wellness tools</strong>
-              <button type="button" onClick={() => setPhoneMoreOpen(false)} aria-label="Close wellness tools">
+              <strong>Shared tools</strong>
+              <button type="button" onClick={() => setPhoneMoreOpen(false)} aria-label="Close shared tools">
                 <X size={16} />
               </button>
             </div>
@@ -1399,7 +1499,7 @@ export default function App() {
         )}
 
         <nav className="phone-bottom-nav" aria-label="Phone navigation">
-          {phonePrimaryTabs.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -1427,11 +1527,13 @@ export default function App() {
           </div>
           <div>
             <h1>Kin</h1>
-            <p>Support and self-reflection</p>
+            <p>{activeAppMeta.label}</p>
           </div>
         </div>
 
-        <nav className="nav-list" aria-label="Main navigation">
+        <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} />
+
+        <nav className="nav-list" aria-label={`${activeAppMeta.label} navigation`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -1448,8 +1550,8 @@ export default function App() {
           })}
         </nav>
 
-        <div className="nav-section-label">Wellness tools</div>
-        <nav className="nav-list nav-list--utility" aria-label="Wellness tools">
+        <div className="nav-section-label">Shared tools</div>
+        <nav className="nav-list nav-list--utility" aria-label="Shared tools">
           {utilityNavItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -1480,7 +1582,7 @@ export default function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <h1>{activeTab}</h1>
+            <h1>{activeTab === "Chat" ? activeAppMeta.chatTitle : activeTab}</h1>
             <p>{formatToday()} - This app does not diagnose or replace professional care.</p>
           </div>
           <div className="topbar-actions">
@@ -1519,12 +1621,41 @@ export default function App() {
   );
 }
 
+function AppSpaceSwitcher({ activeAppSpace, onSwitch, compact = false }) {
+  const spaces = [
+    { id: appSpaceIds.wellness, label: compact ? "Well" : "Wellness", icon: Leaf },
+    { id: appSpaceIds.adhd, label: compact ? "ADHD" : "ADHD / Focus", icon: Brain },
+  ];
+
+  return (
+    <div className={compact ? "app-space-switcher app-space-switcher--compact" : "app-space-switcher"} role="tablist" aria-label="Kin app space">
+      {spaces.map((space) => {
+        const Icon = space.icon;
+        return (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeAppSpace === space.id}
+            className={activeAppSpace === space.id ? "app-space-tab active" : "app-space-tab"}
+            key={space.id}
+            onClick={() => onSwitch(space.id)}
+          >
+            <Icon size={15} />
+            <span>{space.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function HomeView({
   latestCheckIn,
   trendSummary,
   recommendation,
   carePlan,
   goals,
+  activeAppSpace = appSpaceIds.wellness,
   onStartCheckIn,
   onOpenChatMode,
   onOpenGoals,
@@ -1542,39 +1673,54 @@ function HomeView({
   const activeGoalCount = (Array.isArray(goals) ? goals : []).filter(
     (goal) => goal?.status !== "done" && goal?.status !== "archived",
   ).length;
+  const isAdhd = activeAppSpace === appSpaceIds.adhd;
 
   return (
     <section className="home-grid home-grid--unified">
       <article className="hero-card hero-card--compact">
         <div>
-          <h2>How are you feeling?</h2>
-          <p>Start with mood, avoidance, focus, or a tiny next step. Kin keeps it in one support flow.</p>
+          <h2>{isAdhd ? "What needs a start?" : "How are you feeling?"}</h2>
+          <p>
+            {isAdhd
+              ? "Use ADHD / Focus for tiny starts, no-shame recovery, body doubling, goals, and planning."
+              : "Use Wellness for emotions, grounding, journaling, and coping tools."}
+          </p>
           <div className="button-row">
-            <button className="primary-button primary-button--auto" type="button" onClick={() => onOpenChatMode("Support")}>
-              <MessageCircle size={16} />
-              Open Chat
+            <button className="primary-button primary-button--auto" type="button" onClick={() => onOpenChatMode(isAdhd ? "Focus" : "Support")}>
+              {isAdhd ? <Brain size={16} /> : <MessageCircle size={16} />}
+              {isAdhd ? "Open Coach" : "Open Chat"}
             </button>
-            <button className="secondary-button secondary-button--auto" type="button" onClick={onStartCheckIn}>
-              <Activity size={16} />
-              Check in
+            <button className="secondary-button secondary-button--auto" type="button" onClick={isAdhd ? () => onOpenStart("") : onStartCheckIn}>
+              {isAdhd ? <Plus size={16} /> : <Activity size={16} />}
+              {isAdhd ? "Start now" : "Check in"}
             </button>
           </div>
         </div>
-        <Leaf className="hero-leaf" size={92} aria-hidden="true" />
+        {isAdhd ? <Brain className="hero-leaf" size={92} aria-hidden="true" /> : <Leaf className="hero-leaf" size={92} aria-hidden="true" />}
       </article>
 
       <section className="home-action-grid" aria-label="Home actions">
-        <HomeAction
-          icon={MessageCircle}
-          title="How are you feeling?"
-          copy={latestCheckIn ? `Last check-in: ${latestCheckIn.primaryEmotion || "logged"}` : "Talk, check in, or get support."}
-          action="Support"
-          onClick={() => onOpenChatMode("Support")}
-        />
+        {isAdhd ? (
+          <HomeAction
+            icon={Brain}
+            title="Focus coach"
+            copy="Name the task, lower the friction, and pick one visible action."
+            action="Coach"
+            onClick={() => onOpenChatMode("Focus")}
+          />
+        ) : (
+          <HomeAction
+            icon={MessageCircle}
+            title="How are you feeling?"
+            copy={latestCheckIn ? `Last check-in: ${latestCheckIn.primaryEmotion || "logged"}` : "Talk, check in, or get support."}
+            action="Support"
+            onClick={() => onOpenChatMode("Support")}
+          />
+        )}
         <HomeAction
           icon={RotateHomeIcon}
           title="What are you avoiding?"
-          copy="Blend emotional support with an executive-function unblock."
+          copy={isAdhd ? "Treat procrastination as a signal, not a character flaw." : "Blend emotional support with an executive-function unblock."}
           action="Unblock"
           onClick={() => onOpenChatMode("Unblock")}
         />
@@ -1587,7 +1733,7 @@ function HomeView({
         />
         <HomeAction
           icon={CheckCircle2}
-          title="Today’s tiny steps"
+          title="Today's tiny steps"
           copy={`${activeGoalCount} active goal${activeGoalCount === 1 ? "" : "s"}. Missed steps get recovery, not shame.`}
           action="Goals"
           onClick={onOpenGoals}
@@ -1610,8 +1756,12 @@ function HomeView({
 
       <section className="wellness-shortcuts" aria-label="Wellness shortcuts">
         <div className="wellness-shortcuts__heading">
-          <h3>Wellness tools</h3>
-          <p>Check in, journal, track patterns, and manage privacy without leaving Kin.</p>
+          <h3>{isAdhd ? "Connected Wellness tools" : "Wellness tools"}</h3>
+          <p>
+            {isAdhd
+              ? "ADHD support can use mood, journal, and grounding context when pressure or shame is part of the block."
+              : "Check in, journal, track patterns, and manage privacy without leaving Kin."}
+          </p>
         </div>
         <div className="wellness-shortcuts__grid">
           <HomeAction
@@ -1662,10 +1812,11 @@ function HomeView({
       <article className="coach-preview">
         <Brain size={22} />
         <div>
-          <h3>Unified support</h3>
+          <h3>{isAdhd ? "Connected to Wellness" : "Connected to ADHD / Focus"}</h3>
           <p>
-            If you feel overwhelmed, stuck, ashamed, distracted, anxious, depressed, or unable to start, Chat can combine
-            emotional support with practical next steps.
+            {isAdhd
+              ? "If a task is carrying shame, anxiety, or overwhelm, the Coach can bring in Wellness context and still choose one tiny action."
+              : "If you are stuck, distracted, or unable to start, Wellness can hand the problem to ADHD / Focus without losing the emotional context."}
           </p>
           <div className="button-row">
             <button className="secondary-button secondary-button--auto" type="button" onClick={() => onOpenChatMode("Focus")}>

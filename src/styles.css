@@ -163,6 +163,37 @@ button:disabled {
   gap: 8px;
 }
 
+.app-space-switcher {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.app-space-tab {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.app-space-tab.active {
+  background: var(--ink);
+  color: white;
+}
+
 .nav-section-label {
   margin: -4px 2px -10px;
   color: rgba(255, 255, 255, 0.62);
@@ -2801,7 +2832,7 @@ button:disabled {
 
   .phone-shell {
     min-height: 100dvh;
-    padding: calc(64px + env(safe-area-inset-top)) 10px calc(82px + env(safe-area-inset-bottom));
+    padding: calc(104px + env(safe-area-inset-top)) 10px calc(82px + env(safe-area-inset-bottom));
     background: var(--bg);
   }
 
@@ -2811,11 +2842,10 @@ button:disabled {
     top: 0;
     right: 0;
     left: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
-    min-height: calc(58px + env(safe-area-inset-top));
+    min-height: calc(96px + env(safe-area-inset-top));
     padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
     border-bottom: 1px solid var(--line);
     background: rgba(244, 247, 247, 0.96);
@@ -2857,14 +2887,35 @@ button:disabled {
   .phone-header-actions {
     display: flex;
     align-items: center;
-    gap: 7px;
-    flex: 0 0 auto;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
   }
 
   .phone-header-actions .api-status {
-    min-height: 34px;
-    padding: 0 9px;
-    font-size: 12px;
+    display: none;
+  }
+
+  .phone-header-actions .app-space-switcher {
+    margin: 0;
+  }
+
+  .app-space-switcher--compact {
+    width: 122px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .app-space-switcher--compact .app-space-tab {
+    min-height: 32px;
+    padding: 0 5px;
+    font-size: 0.72rem;
+  }
+
+  .app-space-switcher--compact .app-space-tab svg {
+    display: none;
   }
 
   .phone-header-actions .sos-button--compact {

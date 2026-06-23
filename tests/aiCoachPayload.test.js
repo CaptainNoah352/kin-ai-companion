@@ -24,6 +24,8 @@ test("coach chat payload includes sanitized memory when personalization is enabl
     supportModes: ["procrastination", "emotional_support"],
     manualChatMode: "Support",
     suggestedChatMode: "Unblock",
+    activeAppSpace: "adhd",
+    bridgeContext: { sharedSignals: { latestMood: "Ashamed" } },
   });
 
   assert.equal(payload.memory.supportStyle, "One question at a time.");
@@ -32,6 +34,8 @@ test("coach chat payload includes sanitized memory when personalization is enabl
   assert.deepEqual(payload.supportModes, ["procrastination", "emotional_support"]);
   assert.equal(payload.manualChatMode, "Support");
   assert.equal(payload.suggestedChatMode, "Unblock");
+  assert.equal(payload.activeAppSpace, "adhd");
+  assert.deepEqual(payload.bridgeContext, { sharedSignals: { latestMood: "Ashamed" } });
 });
 
 test("coach chat payload excludes memory when personalization is disabled", () => {

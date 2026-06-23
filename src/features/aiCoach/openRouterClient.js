@@ -1,5 +1,6 @@
 import { AI_COACH_SYSTEM_PROMPT } from "./aiCoachPrompts.js";
 import { recommendModules } from "./aiCoachService.js";
+import { buildAppSpacePromptContext } from "../appSpaces/appSpaceService.js";
 import { buildSupportModePromptContext } from "../supportModes/supportModeService.js";
 
 const openRouterApiUrl = "https://openrouter.ai/api/v1/chat/completions";
@@ -33,6 +34,10 @@ export async function createOpenRouterBrowserReply({ payload, userOpenRouter }) 
               manualChatMode: payload.manualChatMode,
               suggestedChatMode: payload.suggestedChatMode,
             }),
+            buildAppSpacePromptContext({
+              activeAppSpace: payload.activeAppSpace,
+              bridgeContext: payload.bridgeContext,
+            }),
             "Keep the response concise. Recommend app tools by name when useful.",
           ].join("\n\n"),
         },
@@ -59,6 +64,7 @@ export async function createOpenRouterBrowserReply({ payload, userOpenRouter }) 
     recommendedModuleIds: recommendModules({ text: latest, latestCheckIn: payload.latestCheckIn }),
     supportModes: payload.supportModes || [],
     suggestedChatMode: payload.suggestedChatMode || "Support",
+    activeAppSpace: payload.activeAppSpace || "wellness",
     explanation: "Browser generated response with the user's own OpenRouter key after local safety checks.",
   };
 }
