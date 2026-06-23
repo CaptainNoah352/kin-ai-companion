@@ -1,0 +1,44 @@
+{
+  "id": "act-values",
+  "title": "ACT values exercise",
+  "category": "act",
+  "targetSymptoms": ["stress", "low_mood", "avoidance"],
+  "estimatedMinutes": 7,
+  "evidenceLevel": "established",
+  "steps": [
+    {
+      "id": "life-area",
+      "type": "choice",
+      "title": "Life area",
+      "body": "Choose the area you want to reconnect with.",
+      "inputKey": "lifeArea",
+      "options": ["Health", "Relationships", "Work", "Learning", "Home", "Community"],
+      "required": true
+    },
+    {
+      "id": "value-word",
+      "type": "text_input",
+      "title": "Value word",
+      "body": "Pick one word that describes how you want to show up.",
+      "inputKey": "valueWord",
+      "required": true
+    },
+    {
+      "id": "why",
+      "type": "text_input",
+      "title": "Why it matters",
+      "body": "Write why this value matters to you.",
+      "inputKey": "whyItMatters",
+      "required": true
+    },
+    {
+      "id": "action",
+      "type": "action_plan",
+      "title": "Tiny action",
+      "body": "Choose one action that expresses this value today.",
+      "inputKey": "tinyAction",
+      "required": true
+    }
+  ],
+  "completionPrompt": "Values are directions, not pass/fail tests."
+}

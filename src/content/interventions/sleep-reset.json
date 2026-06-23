@@ -1,0 +1,45 @@
+{
+  "id": "sleep-reset",
+  "title": "Sleep reset",
+  "category": "sleep",
+  "targetSymptoms": ["sleep", "stress", "rumination"],
+  "estimatedMinutes": 8,
+  "evidenceLevel": "promising",
+  "contraindications": ["medical_sleep_disorder"],
+  "steps": [
+    {
+      "id": "difficulty",
+      "type": "choice",
+      "title": "Sleep difficulty",
+      "body": "Which part is hardest right now?",
+      "inputKey": "difficulty",
+      "options": ["Falling asleep", "Staying asleep", "Waking too early", "Irregular schedule"],
+      "required": true
+    },
+    {
+      "id": "wind-down",
+      "type": "action_plan",
+      "title": "Wind-down plan",
+      "body": "Choose one repeatable wind-down cue.",
+      "inputKey": "windDownPlan",
+      "required": true
+    },
+    {
+      "id": "worry-parking",
+      "type": "text_input",
+      "title": "Worry parking",
+      "body": "Write the worry and one time tomorrow when you can revisit it.",
+      "inputKey": "worryParking",
+      "required": true
+    },
+    {
+      "id": "morning",
+      "type": "action_plan",
+      "title": "Morning cue",
+      "body": "Pick a morning cue that helps anchor the day.",
+      "inputKey": "morningCue",
+      "required": true
+    }
+  ],
+  "completionPrompt": "Sleep tools support routines; they do not replace medical care for serious sleep issues."
+}

@@ -1,0 +1,70 @@
+{
+  "name": "kin-ai-companion",
+  "version": "0.1.0",
+  "description": "Local-first AI wellness companion with encrypted Google Drive sync.",
+  "author": "Brandon Alley",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "start": "node scripts/start-kin.mjs",
+    "dev:all": "node scripts/start-kin.mjs",
+    "dev": "vite --host 0.0.0.0 --port 988 --strictPort",
+    "server": "node server.mjs",
+    "desktop:dev": "npm run build && electron .",
+    "desktop:start": "electron .",
+    "desktop:build": "node scripts/build-desktop.mjs",
+    "check:remote": "node scripts/check-remote-access.mjs",
+    "health": "node scripts/health.mjs",
+    "install:startup": "node scripts/install-startup.mjs",
+    "uninstall:startup": "node scripts/uninstall-startup.mjs",
+    "build": "vite build",
+    "test": "node --test tests/*.test.js",
+    "preview": "vite preview --host 127.0.0.1 --port 4174 --strictPort"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "playwright": "^1.61.0"
+  },
+  "build": {
+    "appId": "local.kin.companion",
+    "productName": "Kin",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "build/**",
+      "electron/**",
+      "dist/**",
+      "server.mjs",
+      "runtimeStatus.mjs",
+      "startupTask.mjs",
+      "src/**",
+      "package.json",
+      "!tests/**",
+      "!docs/**",
+      "!*.png",
+      "!AddToiCloudDrive.reg",
+      "!.env",
+      "!.env.*",
+      "!release/**"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "dir"
+      ]
+    }
+  }
+}

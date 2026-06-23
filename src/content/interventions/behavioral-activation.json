@@ -1,0 +1,51 @@
+{
+  "id": "behavioral-activation",
+  "title": "Behavioral activation",
+  "category": "behavioral_activation",
+  "targetSymptoms": ["low_mood", "avoidance", "stress"],
+  "estimatedMinutes": 6,
+  "evidenceLevel": "established",
+  "steps": [
+    {
+      "id": "energy",
+      "type": "rating",
+      "title": "Current energy",
+      "body": "Rate your current energy from 1 to 10.",
+      "inputKey": "energyLevel",
+      "required": true
+    },
+    {
+      "id": "activity",
+      "type": "text_input",
+      "title": "Avoided activity",
+      "body": "Name one activity you have been avoiding or missing.",
+      "inputKey": "avoidedActivity",
+      "required": true
+    },
+    {
+      "id": "value",
+      "type": "text_input",
+      "title": "Value connection",
+      "body": "What value would this action support?",
+      "inputKey": "value",
+      "required": true
+    },
+    {
+      "id": "five-minute",
+      "type": "action_plan",
+      "title": "Five-minute version",
+      "body": "Shrink it to the smallest version that could count.",
+      "inputKey": "fiveMinuteVersion",
+      "required": true
+    },
+    {
+      "id": "time",
+      "type": "text_input",
+      "title": "When",
+      "body": "Pick a time or cue.",
+      "inputKey": "timeCue",
+      "required": true
+    }
+  ],
+  "completionPrompt": "Mark the plan complete when you try the smallest version."
+}

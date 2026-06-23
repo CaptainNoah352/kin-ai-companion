@@ -1,0 +1,59 @@
+{
+  "id": "cbt-thought-record",
+  "title": "CBT thought record",
+  "category": "cbt",
+  "targetSymptoms": ["anxiety", "low_mood", "stress", "rumination"],
+  "estimatedMinutes": 8,
+  "evidenceLevel": "established",
+  "steps": [
+    {
+      "id": "situation",
+      "type": "text_input",
+      "title": "Situation",
+      "body": "Write the situation in one or two factual sentences.",
+      "inputKey": "situation",
+      "required": true
+    },
+    {
+      "id": "emotion",
+      "type": "rating",
+      "title": "Emotion rating",
+      "body": "Rate the emotion intensity from 1 to 10.",
+      "inputKey": "emotionRating",
+      "required": true
+    },
+    {
+      "id": "automatic-thought",
+      "type": "text_input",
+      "title": "Automatic thought",
+      "body": "What thought showed up first?",
+      "inputKey": "automaticThought",
+      "required": true
+    },
+    {
+      "id": "evidence",
+      "type": "text_input",
+      "title": "Evidence check",
+      "body": "Name evidence for and against the thought.",
+      "inputKey": "evidence",
+      "required": true
+    },
+    {
+      "id": "balanced-thought",
+      "type": "text_input",
+      "title": "Balanced thought",
+      "body": "Write a more balanced thought that does not dismiss the hard parts.",
+      "inputKey": "balancedThought",
+      "required": true
+    },
+    {
+      "id": "next-action",
+      "type": "action_plan",
+      "title": "Small next action",
+      "body": "Choose one next action that fits the balanced thought.",
+      "inputKey": "nextAction",
+      "required": true
+    }
+  ],
+  "completionPrompt": "Notice whether the emotion intensity changed, even slightly."
+}

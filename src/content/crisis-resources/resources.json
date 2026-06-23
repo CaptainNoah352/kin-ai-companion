@@ -1,0 +1,18 @@
+{
+  "US": {
+    "crisisLine": "988 Suicide & Crisis Lifeline",
+    "call": "988",
+    "text": "988",
+    "chatUrl": "https://988lifeline.org/",
+    "emergency": "911"
+  },
+  "SE": {
+    "crisisLine": "Local emergency and crisis resources",
+    "emergency": "112",
+    "note": "Verify current local Swedish crisis and health resources before launch."
+  },
+  "default": {
+    "emergency": "Local emergency services",
+    "note": "Show country-specific crisis resources when configured."
+  }
+}

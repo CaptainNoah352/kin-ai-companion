@@ -1,0 +1,51 @@
+{
+  "id": "communication-rehearsal",
+  "title": "Communication rehearsal",
+  "category": "communication",
+  "targetSymptoms": ["relationships", "stress", "boundaries"],
+  "estimatedMinutes": 10,
+  "evidenceLevel": "wellness",
+  "steps": [
+    {
+      "id": "situation",
+      "type": "text_input",
+      "title": "Situation",
+      "body": "Briefly describe the conversation.",
+      "inputKey": "situation",
+      "required": true
+    },
+    {
+      "id": "goal",
+      "type": "text_input",
+      "title": "Goal",
+      "body": "What outcome would be respectful and realistic?",
+      "inputKey": "goal",
+      "required": true
+    },
+    {
+      "id": "feel-need",
+      "type": "text_input",
+      "title": "Feel and need",
+      "body": "Write one sentence for what you feel and one for what you need.",
+      "inputKey": "feelNeed",
+      "required": true
+    },
+    {
+      "id": "boundary",
+      "type": "text_input",
+      "title": "Boundary or request",
+      "body": "Write the request without threats or manipulation.",
+      "inputKey": "boundary",
+      "required": true
+    },
+    {
+      "id": "script",
+      "type": "summary",
+      "title": "Rehearsal script",
+      "body": "Combine the pieces into a short script.",
+      "inputKey": "script",
+      "required": true
+    }
+  ],
+  "completionPrompt": "A good script is clear, respectful, and does not try to control the other person."
+}

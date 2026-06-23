@@ -1,0 +1,31 @@
+{
+  "id": "breathing-box",
+  "title": "Breathing space",
+  "category": "breathing",
+  "targetSymptoms": ["anxiety", "stress", "panic"],
+  "estimatedMinutes": 2,
+  "evidenceLevel": "wellness",
+  "steps": [
+    {
+      "id": "setup",
+      "type": "education",
+      "title": "Settle",
+      "body": "Sit or stand in a way that feels supported. If breathwork feels uncomfortable, stop and use grounding instead."
+    },
+    {
+      "id": "timer",
+      "type": "breathing_timer",
+      "title": "Two-minute rhythm",
+      "body": "Breathe in for four, pause gently, breathe out for six.",
+      "inputKey": "breathingTimer"
+    },
+    {
+      "id": "note",
+      "type": "reflection",
+      "title": "What changed?",
+      "body": "Name one change in your body or attention.",
+      "inputKey": "bodyChange"
+    }
+  ],
+  "completionPrompt": "The goal is not perfect calm. It is giving your body a steadier signal."
+}

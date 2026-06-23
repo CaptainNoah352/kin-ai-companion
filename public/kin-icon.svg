@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kin">
+  <rect width="512" height="512" rx="112" fill="#064f43"/>
+  <path
+    d="M236 378A149.33 149.33 0 0 1 210.4 81.47C332 58 364 46.91 406.67-6.67 428 36 449.33 82.51 449.33 164c0 117.33-101.97 213.33-213.33 213.33Z"
+    fill="none"
+    stroke="#dff4f1"
+    stroke-width="42"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    transform="translate(0 48)"
+  />
+  <path
+    d="M42.67 400c0-64 39.47-114.35 108.37-128C202.67 261.76 256 229.33 277.33 208"
+    fill="none"
+    stroke="#dff4f1"
+    stroke-width="42"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    transform="translate(0 48)"
+  />
+</svg>

@@ -1,0 +1,44 @@
+{
+  "id": "rumination-worry-window",
+  "title": "Worry window",
+  "category": "journaling",
+  "targetSymptoms": ["rumination", "anxiety", "stress"],
+  "estimatedMinutes": 6,
+  "evidenceLevel": "promising",
+  "steps": [
+    {
+      "id": "worry",
+      "type": "text_input",
+      "title": "Name the loop",
+      "body": "Write the worry in one sentence.",
+      "inputKey": "worry",
+      "required": true
+    },
+    {
+      "id": "control",
+      "type": "choice",
+      "title": "Control check",
+      "body": "How much control do you have right now?",
+      "inputKey": "controlLevel",
+      "options": ["Some control", "Little control", "No control right now"],
+      "required": true
+    },
+    {
+      "id": "window",
+      "type": "action_plan",
+      "title": "Worry window",
+      "body": "Choose a short time later when you will revisit this.",
+      "inputKey": "windowTime",
+      "required": true
+    },
+    {
+      "id": "redirect",
+      "type": "action_plan",
+      "title": "Redirect",
+      "body": "Pick one activity to return to after parking the worry.",
+      "inputKey": "redirect",
+      "required": true
+    }
+  ],
+  "completionPrompt": "Parking worry is a practice, not a command to stop thinking."
+}

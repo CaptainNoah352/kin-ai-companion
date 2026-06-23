@@ -1,0 +1,35 @@
+{
+  "id": "self-compassion",
+  "title": "Self-compassion reset",
+  "category": "mindfulness",
+  "targetSymptoms": ["low_mood", "self_criticism", "stress"],
+  "estimatedMinutes": 5,
+  "evidenceLevel": "promising",
+  "steps": [
+    {
+      "id": "hard-part",
+      "type": "text_input",
+      "title": "Hard part",
+      "body": "Name what feels hard without judging yourself for it.",
+      "inputKey": "hardPart",
+      "required": true
+    },
+    {
+      "id": "common-humanity",
+      "type": "reflection",
+      "title": "Common humanity",
+      "body": "Other people struggle too. What would you say to someone you cared about?",
+      "inputKey": "kindWords",
+      "required": true
+    },
+    {
+      "id": "support",
+      "type": "action_plan",
+      "title": "Supportive action",
+      "body": "Choose one kind action that fits the moment.",
+      "inputKey": "supportiveAction",
+      "required": true
+    }
+  ],
+  "completionPrompt": "Kindness does not mean the situation is easy. It means you are not adding extra punishment."
+}

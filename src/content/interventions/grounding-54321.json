@@ -1,0 +1,59 @@
+{
+  "id": "grounding-54321",
+  "title": "Grounding 5-4-3-2-1",
+  "category": "mindfulness",
+  "targetSymptoms": ["anxiety", "panic", "stress"],
+  "estimatedMinutes": 4,
+  "evidenceLevel": "wellness",
+  "steps": [
+    {
+      "id": "before",
+      "type": "rating",
+      "title": "Distress before",
+      "body": "Rate distress from 1 to 10.",
+      "inputKey": "distressBefore",
+      "required": true
+    },
+    {
+      "id": "seen",
+      "type": "text_input",
+      "title": "Five things you see",
+      "body": "List five visible details.",
+      "inputKey": "seen",
+      "required": true
+    },
+    {
+      "id": "felt",
+      "type": "text_input",
+      "title": "Four things you feel",
+      "body": "Name four physical sensations or textures.",
+      "inputKey": "felt",
+      "required": true
+    },
+    {
+      "id": "heard",
+      "type": "text_input",
+      "title": "Three things you hear",
+      "body": "Notice three sounds.",
+      "inputKey": "heard",
+      "required": true
+    },
+    {
+      "id": "smelled-tasted",
+      "type": "text_input",
+      "title": "Two smells, one taste",
+      "body": "Name two smells and one taste, or something neutral you can imagine.",
+      "inputKey": "smellTaste",
+      "required": true
+    },
+    {
+      "id": "after",
+      "type": "rating",
+      "title": "Distress after",
+      "body": "Rate distress again from 1 to 10.",
+      "inputKey": "distressAfter",
+      "required": true
+    }
+  ],
+  "completionPrompt": "You practiced shifting attention back into the present moment."
+}
