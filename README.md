@@ -67,7 +67,7 @@ http://127.0.0.1:988/
 Open Kin from a trusted Tailscale device:
 
 ```text
-http://100.121.182.118:988/
+http://<your-tailscale-ip>:988/
 ```
 
 Useful commands:
@@ -98,8 +98,8 @@ To enable this path:
 1. Create a Google Cloud OAuth web client.
 2. Add your app origin to Authorized JavaScript origins, such as:
    - `http://127.0.0.1:988`
-   - your GitHub Pages origin
-   - any Tailscale or local origin you plan to use
+   - `https://<your-magicdns-name>.<your-tailnet>.ts.net`
+   - your GitHub Pages or hosted HTTPS origin, if you publish one
 3. Copy `.env.example` to `.env` and set:
 
 ```text
@@ -127,6 +127,8 @@ git status --short
 ```
 
 The `.gitignore` excludes `.env`, `node_modules`, `dist`, `release`, and logs. Friends should create their own `.env` from `.env.example`, configure their own Google OAuth client if they host their own origin, and use their own Google account/vault passcode. You cannot read their private vault unless they give you both their encrypted vault file and their vault passcode.
+
+Do not commit `.env`, packaged `release` output, logs, personal Tailscale IPs, personal MagicDNS hostnames, screenshots, or local machine paths. For a friend/self-host release, use placeholders such as `<your-tailscale-ip>` in docs and let each user configure their own origins.
 
 For a quick fresh-user smoke test:
 
@@ -163,6 +165,27 @@ The safety router runs before normal coach responses in both the browser and API
 
 If someone might hurt themselves or someone else, use real-time human help. In the U.S., call or text **988**, use **988lifeline.org** chat, or call emergency services for immediate danger.
 
+## Production Readiness
+
+Kin is ready to harden as a private self-hosted wellness companion, not as a public clinical product. Before publishing to GitHub for friends:
+
+```powershell
+npm.cmd test
+npm.cmd run build
+npm.cmd run health
+npm.cmd run check:remote
+git status --short
+```
+
+Review:
+
+- `docs/production-readiness.md`
+- `docs/security-checklist.md`
+- `docs/privacy-data-map.md`
+- `docs/safety-policy.md`
+
+Each user should bring their own Google account, vault passcode, and OpenRouter key. There is no shared admin dashboard and no developer-readable cloud database.
+
 ## Implemented MVP Features
 
 - Google sign-in gate for private Drive vault use.
@@ -185,6 +208,8 @@ This is a screen lock for casual privacy on a trusted device. It is not full dis
 ## Docs
 
 - `docs/mental-health-feature-plan.md`
+- `docs/production-readiness.md`
+- `docs/security-checklist.md`
 - `docs/safety-policy.md`
 - `docs/ai-boundaries.md`
 - `docs/privacy-data-map.md`

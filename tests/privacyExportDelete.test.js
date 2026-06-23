@@ -21,6 +21,12 @@ test("privacy export is readable and versioned", () => {
       ciphertext: "encrypted-private-content",
     },
     sync: {
+      trustedVaultUnlock: {
+        enabled: true,
+        ciphertext: "trusted-unlock-ciphertext",
+        key: "trusted-unlock-key",
+        createdAt: "2026-06-22T10:00:00.000Z",
+      },
       userOpenRouter: {
         apiKey: "sk-or-v1-export-should-not-leak",
         model: "openai/gpt-4o-mini",
@@ -44,8 +50,13 @@ test("privacy export is readable and versioned", () => {
   assert.equal(exported.data.encryptedVault.ciphertext, undefined);
   assert.equal(exported.data.encryptedVault.salt, undefined);
   assert.equal(exported.data.sync.userOpenRouter.hasApiKey, true);
+  assert.equal(exported.data.sync.trustedVaultUnlock.enabled, true);
+  assert.equal(exported.data.sync.trustedVaultUnlock.ciphertext, undefined);
+  assert.equal(exported.data.sync.trustedVaultUnlock.key, undefined);
   assert.equal(JSON.stringify(exported).includes("sk-or-v1-export-should-not-leak"), false);
   assert.equal(JSON.stringify(exported).includes("encrypted-private-content"), false);
+  assert.equal(JSON.stringify(exported).includes("trusted-unlock-ciphertext"), false);
+  assert.equal(JSON.stringify(exported).includes("trusted-unlock-key"), false);
   assert.match(exported.limitations, /sensitive mental health/i);
 });
 
@@ -63,9 +74,10 @@ test("data map keeps model training off for sensitive categories", () => {
       "memory",
       "safetySignals",
       "appLock",
+      "trustedVaultUnlock",
     ].includes(category.key),
   );
-  assert.ok(sensitive.length >= 11);
+  assert.ok(sensitive.length >= 12);
   for (const category of sensitive) {
     assert.equal(category.usedForModelTraining, false);
   }

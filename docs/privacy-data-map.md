@@ -15,10 +15,11 @@ Kin is local-first by default. Browser/device state is stored under the `kin.v2.
 | Google session | Stores account display metadata for this browser | Yes | No | No | No |
 | Drive sync metadata | Tracks encrypted vault file id, status, and sync times | Yes | No | No | No |
 | Encrypted vault | Stores encrypted synced Kin data in local storage and Google Drive app data | Yes | No | No | No |
+| Trusted-device vault unlock | Stores local encrypted unlock metadata for an opted-in trusted browser profile | Yes | No | No | No |
 | User OpenRouter settings | Optional user API key and model, encrypted inside the vault | Yes | Yes | No | No |
 
 Model training is off by default. This prototype does not silently send raw journal, check-in, or crisis text to analytics providers. Coach messages and enabled personalization context are sent to the configured AI provider only when the user sends a Coach message.
 
 The app lock is a local screen lock for casual privacy. It stores only verifier metadata, not a plaintext passcode, but it is not full disk encryption.
 
-The Google Drive vault passcode is not stored by Kin, Google, or the local API server. Losing the passcode means the encrypted vault cannot be recovered.
+The Google Drive vault passcode is not stored by Kin, Google, or the local API server. If trusted-device unlock is enabled, Kin stores encrypted local unlock metadata in that browser profile so the vault can reopen there without retyping the passcode. Privacy export redacts the trusted-unlock ciphertext and key material. Losing the passcode means the encrypted vault cannot be recovered on devices that did not already remember it.

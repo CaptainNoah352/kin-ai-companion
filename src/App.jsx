@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   PenLine,
   Plus,
+  Router,
   Shield,
   SlidersHorizontal,
   Sparkles,
@@ -57,12 +58,20 @@ import { SafetyFlow } from "./features/safety/SafetyFlow.jsx";
 import { classifyAndStoreSafety } from "./features/safety/safetyLogger.js";
 import { SafetyPlan } from "./features/safety/SafetyPlan.jsx";
 import { SOSButton } from "./features/safety/SOSButton.jsx";
+import { ProductionReadinessChecklist } from "./features/setup/ProductionReadinessChecklist.jsx";
 import { SetupChecklist } from "./features/setup/SetupChecklist.jsx";
 import { GoogleLoginGate } from "./features/sync/GoogleLoginGate.jsx";
 import { StartCenter } from "./features/start/StartCenter.jsx";
 import { deleteDriveVault, downloadDriveVault, findDriveVault, uploadDriveVault } from "./features/sync/driveVaultService.js";
 import { requestDriveAccessToken } from "./features/sync/googleAuthService.js";
 import { SyncCenter } from "./features/sync/SyncCenter.jsx";
+import {
+  createDefaultTrustedVaultUnlock,
+  forgetTrustedVaultUnlock,
+  getTrustedVaultUnlockStatus,
+  readTrustedVaultPasscode,
+  rememberTrustedVaultUnlock,
+} from "./features/sync/trustedVaultUnlockService.js";
 import { createEncryptedVault, openEncryptedVault } from "./features/sync/vaultCryptoService.js";
 import {
   buildVaultPayload,
@@ -102,7 +111,12 @@ const utilityNavItems = [
   { id: "Check In", label: "Check In", icon: Activity },
   { id: "Memory", label: "Memory", icon: UserRound },
   { id: "Safety", label: "Safety", icon: Shield },
-  { id: "Privacy", label: "Privacy", icon: Lock },
+  { id: "Privacy", label: "Privacy / Sync", icon: Lock },
+];
+
+const phoneUtilityNavItems = [
+  ...utilityNavItems,
+  { id: "Privacy", label: "Remote", icon: Router, navKey: "Remote" },
 ];
 
 const appSpaceNavItems = {
@@ -174,6 +188,7 @@ export default function App() {
   const [driveSync, setDriveSync] = useStoredState(storageKeys.driveSync, createDefaultDriveSync());
   const [vaultPasscode, setVaultPasscode] = useState("");
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [trustedVaultUnlock, setTrustedVaultUnlock] = useState(createDefaultTrustedVaultUnlock());
   const [userOpenRouter, setUserOpenRouter] = useState(createDefaultUserOpenRouter());
   const [driveAccessToken, setDriveAccessTokenState] = useState(() => readSessionValue(googleDriveTokenSessionKey, ""));
   const [pendingRemoteVault, setPendingRemoteVault] = useState(null);
@@ -226,6 +241,16 @@ export default function App() {
     setActiveTab("Chat");
     setPhoneDefaultApplied(true);
   }, [isPhoneShell, phoneDefaultApplied, setActiveAppSpaceState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getTrustedVaultUnlockStatus().then((status) => {
+      if (!cancelled) setTrustedVaultUnlock(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (userOpenRouter.apiKey) {
@@ -388,6 +413,46 @@ export default function App() {
     }, 300);
     return () => window.clearTimeout(timer);
   }, [googleSession?.email, vaultUnlocked, vaultPasscode, driveAccessToken]);
+
+  useEffect(() => {
+    if (!googleSession?.email || vaultUnlocked || isPrivacyLocked || !trustedVaultUnlock.enabled) return undefined;
+    const localEnvelope = readLocalEncryptedVault();
+    if (!localEnvelope) return undefined;
+
+    let cancelled = false;
+    async function autoUnlockTrustedVault() {
+      try {
+        const passcode = await readTrustedVaultPasscode(googleSession);
+        if (!passcode || cancelled) return;
+        const payload = await importVaultEnvelope(localEnvelope, passcode);
+        if (cancelled) return;
+        syncAfterUnlockRef.current = true;
+        setVaultPasscode(passcode);
+        setVaultUnlocked(true);
+        setTrustedVaultUnlock(await getTrustedVaultUnlockStatus());
+        setSyncMessage(`Vault unlocked on this trusted device. Last saved ${formatSyncTimestamp(payload.updatedAt)}.`);
+        void getDriveAccessToken({ allowTokenPrompt: false, prompt: "" }).catch((tokenError) => {
+          setDriveSync((current) => ({
+            ...createDefaultDriveSync(current),
+            enabled: true,
+            status: "needs-google-session",
+            error: normalizeDriveSyncError(tokenError),
+          }));
+          setSyncError("Drive token refresh needed. Tap Sync now.");
+        });
+      } catch (error) {
+        await forgetTrustedVaultUnlock().catch(() => {});
+        if (cancelled) return;
+        setTrustedVaultUnlock(createDefaultTrustedVaultUnlock());
+        setSyncError(error.message || "Remembered vault unlock failed. Enter the vault passcode once.");
+      }
+    }
+
+    void autoUnlockTrustedVault();
+    return () => {
+      cancelled = true;
+    };
+  }, [googleSession?.email, vaultUnlocked, isPrivacyLocked, trustedVaultUnlock.enabled]);
 
   useEffect(() => {
     if (!googleSession?.email || !vaultUnlocked || !vaultPasscode || pendingRemoteVault) return undefined;
@@ -898,6 +963,40 @@ export default function App() {
     }
   }
 
+  async function handleRememberTrustedVault() {
+    setSyncMessage("");
+    setSyncError("");
+    if (!vaultUnlocked || !vaultPasscode) {
+      setSyncError("Unlock the encrypted vault before remembering this device.");
+      return { ok: false, message: "Unlock the encrypted vault before remembering this device." };
+    }
+    try {
+      const status = await rememberTrustedVaultUnlock(vaultPasscode, googleSession);
+      setTrustedVaultUnlock(status);
+      setSyncMessage("Vault will unlock automatically on this trusted device.");
+      return { ok: true };
+    } catch (error) {
+      const message = error.message || "This device could not remember the vault.";
+      setSyncError(message);
+      return { ok: false, message };
+    }
+  }
+
+  async function handleForgetTrustedVault() {
+    setSyncMessage("");
+    setSyncError("");
+    try {
+      const status = await forgetTrustedVaultUnlock();
+      setTrustedVaultUnlock(status);
+      setSyncMessage("Remembered vault unlock removed from this device.");
+      return { ok: true };
+    } catch (error) {
+      const message = error.message || "Remembered vault unlock could not be removed.";
+      setSyncError(message);
+      return { ok: false, message };
+    }
+  }
+
   async function handleSaveOpenRouter(settings) {
     setSyncMessage("");
     setSyncError("");
@@ -1047,6 +1146,7 @@ export default function App() {
     saveDriveAccessToken("");
     setVaultPasscode("");
     setVaultUnlocked(false);
+    void forgetTrustedVaultUnlock().then(setTrustedVaultUnlock).catch(() => setTrustedVaultUnlock(createDefaultTrustedVaultUnlock()));
     setPendingRemoteVault(null);
     setUserOpenRouter(createDefaultUserOpenRouter());
     setSyncMessage("");
@@ -1071,6 +1171,7 @@ export default function App() {
           : null,
         driveSync: createDefaultDriveSync(driveSync),
         vaultUnlocked,
+        trustedVaultUnlock,
         userOpenRouter: redactUserOpenRouter(userOpenRouter),
       },
       runtime: {
@@ -1105,6 +1206,7 @@ export default function App() {
     setMemory(createDefaultMemory());
     setVaultPasscode("");
     setVaultUnlocked(false);
+    void forgetTrustedVaultUnlock().then(setTrustedVaultUnlock).catch(() => setTrustedVaultUnlock(createDefaultTrustedVaultUnlock()));
     setPendingRemoteVault(null);
     saveDriveAccessToken("");
     lastVaultContentSignatureRef.current = "";
@@ -1140,6 +1242,7 @@ export default function App() {
     setDriveSync(createDefaultDriveSync());
     setVaultPasscode("");
     setVaultUnlocked(false);
+    void forgetTrustedVaultUnlock().then(setTrustedVaultUnlock).catch(() => setTrustedVaultUnlock(createDefaultTrustedVaultUnlock()));
     setPendingRemoteVault(null);
     setUserOpenRouter(createDefaultUserOpenRouter());
     saveDriveAccessToken("");
@@ -1386,14 +1489,25 @@ export default function App() {
         onDeleteMentalHealthContent={deleteMentalHealthAndState}
         onDeleteAll={deleteAllAndState}
         setupChecklist={
-          <SetupChecklist
-            googleSession={googleSession}
-            vaultUnlocked={vaultUnlocked}
-            driveSync={driveSync}
-            apiMode={apiMode}
-            appLock={appLock}
-            hasDriveAccessToken={Boolean(driveAccessToken)}
-          />
+          <>
+            <SetupChecklist
+              googleSession={googleSession}
+              vaultUnlocked={vaultUnlocked}
+              driveSync={driveSync}
+              apiMode={apiMode}
+              appLock={appLock}
+              hasDriveAccessToken={Boolean(driveAccessToken)}
+            />
+            <ProductionReadinessChecklist
+              googleSession={googleSession}
+              vaultUnlocked={vaultUnlocked}
+              driveSync={driveSync}
+              appLock={appLock}
+              trustedVaultUnlock={trustedVaultUnlock}
+              apiMode={apiMode}
+              hasDriveAccessToken={Boolean(driveAccessToken)}
+            />
+          </>
         }
         syncCenter={
           <SyncCenter
@@ -1414,6 +1528,9 @@ export default function App() {
             hasConflict={Boolean(pendingRemoteVault)}
             onUseDriveCopy={handleUseDriveCopy}
             onUseThisDevice={handleUseThisDevice}
+            trustedVaultUnlock={trustedVaultUnlock}
+            onRememberTrustedVault={handleRememberTrustedVault}
+            onForgetTrustedVault={handleForgetTrustedVault}
             message={syncMessage}
             error={syncError || driveSync?.error || ""}
           />
@@ -1480,13 +1597,13 @@ export default function App() {
               </button>
             </div>
             <div className="phone-more-grid">
-              {utilityNavItems.map((item) => {
+              {phoneUtilityNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <button
-                    className={activeTab === item.id ? "phone-more-item active" : "phone-more-item"}
+                    className={activeTab === item.id && !item.navKey ? "phone-more-item active" : "phone-more-item"}
                     type="button"
-                    key={item.id}
+                    key={item.navKey || item.id}
                     onClick={() => selectTab(item.id)}
                   >
                     <Icon size={18} />
@@ -1558,7 +1675,7 @@ export default function App() {
               <button
                 className={activeTab === item.id ? "nav-item active" : "nav-item"}
                 type="button"
-                key={item.id}
+                key={item.navKey || item.id}
                 onClick={() => selectTab(item.id)}
               >
                 <Icon size={18} />

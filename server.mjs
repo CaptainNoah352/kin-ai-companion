@@ -23,8 +23,62 @@ const serverHost = process.env.KIN_SERVER_HOST || (serveStatic ? "0.0.0.0" : "12
 const openRouterApiUrl = "https://openrouter.ai/api/v1/chat/completions";
 const pbkdf2Async = promisify(pbkdf2);
 
-app.use(cors());
+app.use(securityHeaders);
+app.use(cors({ origin: isAllowedCorsOrigin }));
 app.use(express.json({ limit: "1mb" }));
+
+function securityHeaders(_req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  next();
+}
+
+function getConfiguredOrigins() {
+  return [
+    process.env.KIN_ALLOWED_ORIGINS,
+    process.env.VITE_KIN_REMOTE_ORIGIN,
+    process.env.OPENROUTER_SITE_URL,
+  ]
+    .flatMap((value) => String(value || "").split(","))
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
+function isAllowedCorsOrigin(origin, callback) {
+  if (!origin) {
+    callback(null, true);
+    return;
+  }
+
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    const allowed =
+      getConfiguredOrigins().includes(origin.replace(/\/$/, "")) ||
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".ts.net") ||
+      isPrivateLanHost(host) ||
+      isTailscaleIpv4(host);
+    callback(null, allowed);
+  } catch {
+    callback(null, false);
+  }
+}
+
+function isPrivateLanHost(host) {
+  const parts = host.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) return false;
+  const [first, second] = parts;
+  return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
+}
+
+function isTailscaleIpv4(host) {
+  const parts = host.split(".").map(Number);
+  return parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255) && parts[0] === 100;
+}
 
 function getAiProvider() {
   if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_MODEL) {

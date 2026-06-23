@@ -35,3 +35,14 @@ test("index includes iOS and browser install metadata", () => {
 test("install hint dismissal has a local storage key", () => {
   assert.equal(storageKeys.installHintDismissed, "installHintDismissed");
 });
+
+test("public setup files do not hardcode a personal Tailscale address", () => {
+  const publicSetupText = [
+    readFileSync(resolve(root, "README.md"), "utf8"),
+    readFileSync(resolve(root, ".env.example"), "utf8"),
+    readFileSync(resolve(root, "vite.config.js"), "utf8"),
+  ].join("\n");
+
+  assert.equal(publicSetupText.includes("100.121.182.118"), false);
+  assert.equal(publicSetupText.includes("darkroom-alley.taild04360.ts.net"), false);
+});

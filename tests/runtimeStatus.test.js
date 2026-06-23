@@ -11,14 +11,14 @@ test("parses Tailscale Running state with a 100.x URL", () => {
   const parsed = parseTailscaleStatusJson(
     {
       BackendState: "Running",
-      TailscaleIPs: ["100.121.182.118", "fd7a:115c:a1e0::1"],
+      TailscaleIPs: ["100.64.0.10", "fd7a:115c:a1e0::1"],
       Peer: {
         "nodekey:abc": {
           HostName: "trusted-phone",
           DNSName: "trusted-phone.tailnet.ts.net.",
           OS: "iOS",
           Online: true,
-          TailscaleIPs: ["100.90.80.70"],
+          TailscaleIPs: ["100.64.0.20"],
         },
       },
     },
@@ -27,10 +27,10 @@ test("parses Tailscale Running state with a 100.x URL", () => {
 
   assert.equal(parsed.installed, true);
   assert.equal(parsed.backendState, "Running");
-  assert.equal(parsed.ip, "100.121.182.118");
-  assert.equal(parsed.url, "http://100.121.182.118:988/");
+  assert.equal(parsed.ip, "100.64.0.10");
+  assert.equal(parsed.url, "http://100.64.0.10:988/");
   assert.equal(parsed.peers.length, 1);
-  assert.equal(parsed.peers[0].ip, "100.90.80.70");
+  assert.equal(parsed.peers[0].ip, "100.64.0.20");
 });
 
 test("parses Tailscale NoState without a URL", () => {

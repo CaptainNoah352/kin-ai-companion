@@ -12,7 +12,11 @@ export function GoogleLoginGate({ onSignIn }) {
 
   async function handleGoogleSignIn() {
     if (originProblem) {
-      setError(`Google sign-in cannot start from ${origin}. Open Kin from the HTTPS Tailscale URL instead.`);
+      setError(
+        preferredGoogleOrigin
+          ? `Google sign-in cannot start from ${origin}. Open Kin from the HTTPS Tailscale URL instead.`
+          : `Google sign-in cannot start from ${origin}. Set VITE_KIN_REMOTE_ORIGIN to your HTTPS Tailscale URL, then open Kin from that URL.`,
+      );
       return;
     }
     setError("");
@@ -53,11 +57,15 @@ export function GoogleLoginGate({ onSignIn }) {
           <div className="notice-strip notice-strip--warning origin-warning-card">
             <ShieldAlert size={18} />
             <span>
-              Google sign-in cannot run from <code>{origin}</code>. Use the HTTPS Tailscale URL.
+              Google sign-in cannot run from <code>{origin}</code>. Use your HTTPS Tailscale URL.
             </span>
-            <button className="secondary-button secondary-button--auto" type="button" onClick={() => openPreferredOrigin(preferredGoogleOrigin)}>
-              Open secure Kin URL
-            </button>
+            {preferredGoogleOrigin ? (
+              <button className="secondary-button secondary-button--auto" type="button" onClick={() => openPreferredOrigin(preferredGoogleOrigin)}>
+                Open secure Kin URL
+              </button>
+            ) : (
+              <small>Set VITE_KIN_REMOTE_ORIGIN in .env.</small>
+            )}
           </div>
         )}
 
@@ -96,7 +104,7 @@ function getCurrentOrigin() {
 }
 
 function getPreferredGoogleOrigin() {
-  return import.meta.env?.VITE_KIN_REMOTE_ORIGIN || "https://darkroom-alley.taild04360.ts.net";
+  return import.meta.env?.VITE_KIN_REMOTE_ORIGIN || "";
 }
 
 function getGoogleOriginProblem(origin) {

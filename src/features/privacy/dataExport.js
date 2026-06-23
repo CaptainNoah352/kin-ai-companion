@@ -1,4 +1,5 @@
 import { redactAppLockForExport } from "./appLockService.js";
+import { createDefaultTrustedVaultUnlock } from "../sync/trustedVaultUnlockService.js";
 
 export const dataCategories = [
   {
@@ -157,6 +158,16 @@ export const dataCategories = [
     usedForAnalytics: false,
     usedForModelTraining: false,
   },
+  {
+    key: "trustedVaultUnlock",
+    label: "Trusted-device vault unlock",
+    purpose: "Stores local encrypted unlock metadata so a trusted browser profile can reopen the vault without retyping the passcode.",
+    required: false,
+    userCanDelete: true,
+    usedForAiPersonalization: false,
+    usedForAnalytics: false,
+    usedForModelTraining: false,
+  },
 ];
 
 export function buildPrivacyExport(data) {
@@ -165,6 +176,7 @@ export function buildPrivacyExport(data) {
     appLock: data?.appLock ? redactAppLockForExport(data.appLock) : null,
     encryptedVault: redactEncryptedVaultForExport(data?.encryptedVault),
     sync: redactSyncForExport(data?.sync),
+    trustedVaultUnlock: redactTrustedVaultUnlockForExport(data?.trustedVaultUnlock || data?.sync?.trustedVaultUnlock),
   };
 
   return {
@@ -195,6 +207,7 @@ function redactSyncForExport(sync) {
   if (!sync) return null;
   return {
     ...sync,
+    trustedVaultUnlock: redactTrustedVaultUnlockForExport(sync.trustedVaultUnlock),
     userOpenRouter: sync.userOpenRouter
       ? {
           model: sync.userOpenRouter.model || "",
@@ -204,6 +217,15 @@ function redactSyncForExport(sync) {
           hasApiKey: Boolean(sync.userOpenRouter.hasApiKey || sync.userOpenRouter.apiKey),
         }
       : null,
+  };
+}
+
+function redactTrustedVaultUnlockForExport(status) {
+  const normalized = createDefaultTrustedVaultUnlock(status);
+  return {
+    enabled: normalized.enabled,
+    createdAt: normalized.createdAt,
+    updatedAt: normalized.updatedAt,
   };
 }
 

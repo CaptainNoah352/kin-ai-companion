@@ -19,6 +19,9 @@ export function SyncCenter({
   hasConflict,
   onUseDriveCopy,
   onUseThisDevice,
+  trustedVaultUnlock,
+  onRememberTrustedVault,
+  onForgetTrustedVault,
   message,
   error,
 }) {
@@ -105,6 +108,30 @@ export function SyncCenter({
 
       {vaultUnlocked && (
         <>
+          <div className="trusted-vault-panel">
+            <div>
+              <strong>Trusted device unlock</strong>
+              <p>
+                {trustedVaultUnlock?.enabled
+                  ? "Vault passcode is remembered on this browser profile."
+                  : "Optionally unlock this vault automatically on this trusted personal device."}
+              </p>
+              <small>
+                Status: {trustedVaultUnlock?.enabled ? "Remembered on this device" : "Not remembered"}. Anyone with
+                access to this unlocked browser profile may be able to open Kin.
+              </small>
+            </div>
+            {trustedVaultUnlock?.enabled ? (
+              <button className="secondary-button secondary-button--auto" type="button" onClick={onForgetTrustedVault}>
+                Forget remembered vault
+              </button>
+            ) : (
+              <button className="secondary-button secondary-button--auto" type="button" onClick={onRememberTrustedVault}>
+                Remember vault on this device
+              </button>
+            )}
+          </div>
+
           {hasConflict && (
             <div className="sync-conflict-panel">
               <AlertTriangle size={19} />
