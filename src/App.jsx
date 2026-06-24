@@ -10,6 +10,7 @@ import {
   LifeBuoy,
   Lock,
   MessageCircle,
+  Monitor,
   Moon,
   MoreHorizontal,
   PenLine,
@@ -184,7 +185,9 @@ const defaultProfile = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useStoredState(storageKeys.activeTab, getInitialActiveTab());
-  const [theme, setTheme] = useStoredState("theme", "dark");
+  const [theme, setTheme] = useStoredState("theme", "system");
+  const systemTheme = useSystemTheme();
+  const resolvedTheme = theme === "light" || theme === "dark" ? theme : systemTheme;
   const [phoneDefaultApplied, setPhoneDefaultApplied] = useState(false);
   const [phoneMoreOpen, setPhoneMoreOpen] = useState(false);
   const [activeAppSpace, setActiveAppSpaceState] = useStoredState(storageKeys.activeAppSpace, appSpaceIds.wellness);
@@ -270,11 +273,10 @@ export default function App() {
   );
 
   useEffect(() => {
-    const mode = theme === "light" ? "light" : "dark";
-    document.documentElement.dataset.theme = mode;
+    document.documentElement.dataset.theme = resolvedTheme;
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", mode === "light" ? "#eaf3ef" : "#05140f");
-  }, [theme]);
+    if (meta) meta.setAttribute("content", resolvedTheme === "light" ? "#eaf3ef" : "#05140f");
+  }, [resolvedTheme]);
 
   useEffect(() => {
     if (!isPhoneShell || phoneDefaultApplied) return;
@@ -1834,7 +1836,7 @@ export default function App() {
           <div className="phone-header-actions">
             <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} compact />
             <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
-            <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === "light" ? "dark" : "light"))} className="phone-wellness-button theme-toggle" />
+            <ThemeToggle setting={theme} onCycle={() => setTheme(cycleThemeSetting)} className="phone-wellness-button theme-toggle" />
             <button
               className={phoneMoreOpen ? "phone-wellness-button active" : "phone-wellness-button"}
               type="button"
@@ -1980,7 +1982,7 @@ export default function App() {
               <Plus size={16} />
               Start
             </button>
-            <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === "light" ? "dark" : "light"))} className="icon-text-button theme-toggle" />
+            <ThemeToggle setting={theme} onCycle={() => setTheme(cycleThemeSetting)} className="icon-text-button theme-toggle" />
             <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
             <SOSButton compact onClick={() => selectTab("Safety")} />
           </div>
@@ -2012,12 +2014,24 @@ export default function App() {
   );
 }
 
-function ThemeToggle({ theme, onToggle, className }) {
-  const isLight = theme === "light";
-  const Icon = isLight ? Moon : Sun;
-  const label = isLight ? "Switch to dark mode" : "Switch to light mode";
+const themeSettingMeta = {
+  system: { Icon: Monitor, label: "System" },
+  light: { Icon: Sun, label: "Light" },
+  dark: { Icon: Moon, label: "Dark" },
+};
+
+function cycleThemeSetting(current) {
+  if (current === "system") return "light";
+  if (current === "light") return "dark";
+  return "system";
+}
+
+function ThemeToggle({ setting, onCycle, className }) {
+  const meta = themeSettingMeta[setting] || themeSettingMeta.system;
+  const Icon = meta.Icon;
+  const label = `Theme: ${meta.label}. Tap to change.`;
   return (
-    <button className={className} type="button" onClick={onToggle} aria-label={label} title={label}>
+    <button className={className} type="button" onClick={onCycle} aria-label={label} title={label}>
       <Icon size={17} />
     </button>
   );
@@ -2507,6 +2521,24 @@ function useMediaQuery(query) {
   }, [query]);
 
   return matches;
+}
+
+function useSystemTheme() {
+  const [pref, setPref] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    function handleChange() {
+      setPref(media.matches ? "dark" : "light");
+    }
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  return pref;
 }
 
 function slugify(value) {

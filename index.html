@@ -55,9 +55,17 @@
     </script>
     <script>
       (function () {
+        function systemTheme() {
+          return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
         try {
           var stored = localStorage.getItem("kin.v2.theme");
-          document.documentElement.dataset.theme = stored && stored.indexOf("light") !== -1 ? "light" : "dark";
+          var mode = stored && stored.indexOf("light") !== -1
+            ? "light"
+            : stored && stored.indexOf("dark") !== -1
+              ? "dark"
+              : systemTheme();
+          document.documentElement.dataset.theme = mode;
         } catch (error) {
           document.documentElement.dataset.theme = "dark";
         }

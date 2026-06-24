@@ -8,6 +8,7 @@ import { shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
 import { buildConversationSummary, MEMORY_SUMMARY_MIN_LENGTH } from "../memory/memoryService.js";
 import { classifySafety, shouldPauseForSafety } from "../safety/safetyRouter.js";
 import { buildModeSuggestion, chatModes } from "../supportModes/supportModeService.js";
+import { parseInlineMarkdown } from "./richMessageText.js";
 
 const starterMessages = [
   {
@@ -272,7 +273,7 @@ export function AiCoachChat({
           <article className={`message ${message.role}`} key={`${message.role}-${index}`}>
             <div className="message-avatar">{message.role === "assistant" ? <Brain size={18} /> : "You"}</div>
             <div className="message-body">
-              <p>{message.content}</p>
+              <RichMessageText text={message.content} />
               {message.suggestedChatMode && (
                 <small className="message-mode-note">Suggested mode: {message.suggestedChatMode}</small>
               )}
@@ -340,6 +341,23 @@ function friendlyModuleName(moduleId) {
     .replace("54321", "5-4-3-2-1")
     .replaceAll("-", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function RichMessageText({ text }) {
+  return (
+    <p>
+      {parseInlineMarkdown(text).map((token, index) => {
+        const key = `${token.type}-${index}`;
+        if (token.type === "strong") {
+          return <strong key={key}>{token.text}</strong>;
+        }
+        if (token.type === "em") {
+          return <em key={key}>{token.text}</em>;
+        }
+        return token.text;
+      })}
+    </p>
+  );
 }
 
 function useMediaQuery(query) {
