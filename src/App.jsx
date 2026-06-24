@@ -10,6 +10,7 @@ import {
   LifeBuoy,
   Lock,
   MessageCircle,
+  Moon,
   MoreHorizontal,
   PenLine,
   Plus,
@@ -17,6 +18,7 @@ import {
   Shield,
   SlidersHorizontal,
   Sparkles,
+  Sun,
   UserRound,
   Wrench,
   X,
@@ -170,6 +172,7 @@ const defaultProfile = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useStoredState(storageKeys.activeTab, getInitialActiveTab());
+  const [theme, setTheme] = useStoredState("theme", "dark");
   const [phoneDefaultApplied, setPhoneDefaultApplied] = useState(false);
   const [phoneMoreOpen, setPhoneMoreOpen] = useState(false);
   const [activeAppSpace, setActiveAppSpaceState] = useStoredState(storageKeys.activeAppSpace, appSpaceIds.wellness);
@@ -253,6 +256,13 @@ export default function App() {
       }),
     [normalizedAppSpace, wellnessMessages, adhdMessages, adhdTasks, goals, startSessions, weeklyReviews, checkIns, memory],
   );
+
+  useEffect(() => {
+    const mode = theme === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = mode;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", mode === "light" ? "#eaf3ef" : "#05140f");
+  }, [theme]);
 
   useEffect(() => {
     if (!isPhoneShell || phoneDefaultApplied) return;
@@ -1706,6 +1716,7 @@ export default function App() {
           <div className="phone-header-actions">
             <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} compact />
             <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
+            <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === "light" ? "dark" : "light"))} className="phone-wellness-button theme-toggle" />
             <button
               className={phoneMoreOpen ? "phone-wellness-button active" : "phone-wellness-button"}
               type="button"
@@ -1851,6 +1862,7 @@ export default function App() {
               <Plus size={16} />
               Start
             </button>
+            <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === "light" ? "dark" : "light"))} className="icon-text-button theme-toggle" />
             <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
             <SOSButton compact onClick={() => selectTab("Safety")} />
           </div>
@@ -1879,6 +1891,17 @@ export default function App() {
         />
       )}
     </main>
+  );
+}
+
+function ThemeToggle({ theme, onToggle, className }) {
+  const isLight = theme === "light";
+  const Icon = isLight ? Moon : Sun;
+  const label = isLight ? "Switch to dark mode" : "Switch to light mode";
+  return (
+    <button className={className} type="button" onClick={onToggle} aria-label={label} title={label}>
+      <Icon size={17} />
+    </button>
   );
 }
 

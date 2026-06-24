@@ -53,6 +53,16 @@
         );
       })();
     </script>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("kin.v2.theme");
+          document.documentElement.dataset.theme = stored && stored.indexOf("light") !== -1 ? "light" : "dark";
+        } catch (error) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
     <!-- kin-static-loader-start -->
     <script>
       (function () {
