@@ -45,6 +45,7 @@ export function AiCoachChat({
   const [memoryDraft, setMemoryDraft] = useState("");
   const [memoryNotice, setMemoryNotice] = useState("");
   const [modeSuggestion, setModeSuggestion] = useState(null);
+  const isPhone = useMediaQuery("(max-width: 700px)");
   const endRef = useRef(null);
   const visibleMessages = messages.length ? messages : starterMessages;
   const generatedSummary = useMemo(() => buildConversationSummary(messages), [messages]);
@@ -259,6 +260,7 @@ export function AiCoachChat({
         <div className="notice-strip">AI disclosure must be accepted before using Chat.</div>
       )}
 
+      {!isPhone && (
       <section className="coach-memory-card" aria-label="Memory shortcut">
         <div className="coach-memory-card__icon">
           <UserRound size={18} />
@@ -294,6 +296,7 @@ export function AiCoachChat({
           </button>
         </div>
       </section>
+      )}
 
       {memoryDraft && (
         <section className="memory-draft-panel" aria-label="Review chat memory">
@@ -371,12 +374,44 @@ export function AiCoachChat({
         </button>
       </form>
 
-      <button className="ghost-button ghost-button--inline" type="button" onClick={() => setMessages(starterMessages)}>
-        <RotateCcw size={16} />
-        Reset chat
-      </button>
+      <div className="coach-footer">
+        {isPhone && (
+          <button
+            className="secondary-button secondary-button--auto"
+            type="button"
+            onClick={startMemoryReview}
+            disabled={!canSaveChatMemory}
+            title={canSaveChatMemory ? "Save a local summary of this chat." : "Chat with Kin first, then save a memory."}
+          >
+            <Save size={16} />
+            Save chat
+          </button>
+        )}
+        <button className="ghost-button ghost-button--inline" type="button" onClick={() => setMessages(starterMessages)}>
+          <RotateCcw size={16} />
+          Reset chat
+        </button>
+      </div>
     </section>
   );
+}
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(query).matches : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    function handleChange() {
+      setMatches(media.matches);
+    }
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, [query]);
+
+  return matches;
 }
 
 async function fetchServerCoachReply(payload) {

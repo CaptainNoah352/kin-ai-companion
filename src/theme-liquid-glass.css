@@ -839,10 +839,32 @@ input[type="radio"] {
   min-height: 38px;
 }
 
-/* a touch more separation under the pinned composer */
-.phone-shell--chat .coach-section > .ghost-button--inline,
-.phone-shell--coach .coach-section > .ghost-button--inline {
+/* compact footer (Save chat + Reset) sits in one slim row on phone */
+.coach-footer {
+  display: flex;
+  gap: 8px;
+}
+.phone-shell--chat .coach-footer > *,
+.phone-shell--coach .coach-footer > * {
+  flex: 1 1 0;
   min-height: 40px;
+}
+
+/* slim, single-line mode suggestion on phone */
+.phone-shell .mode-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+.phone-shell .mode-suggestion span {
+  min-width: 0;
+}
+.phone-shell .mode-suggestion button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 34px;
+  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------------
