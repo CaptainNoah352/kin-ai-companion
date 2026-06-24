@@ -1,0 +1,800 @@
+/* =====================================================================
+   Kin — Liquid Glass theme (dark forest, mobile-first)
+   Loaded AFTER styles.css so it wins the cascade. This is a material
+   overhaul only: it re-skins the existing class-driven UI, it does not
+   change structure. Primary target is the iPhone PWA, so every frosted
+   surface ships BOTH -webkit-backdrop-filter (required by iOS Safari)
+   and the standard property.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. Tokens — dark forest glass
+   The base stylesheet routes most colors through these variables, so
+   redefining them does the bulk of the dark inversion. Foreground
+   accents (--pine/--teal/--ink/--muted/--coral-dark) are brightened;
+   their few background usages are already overridden downstream.
+   --------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+
+  --bg: #05140f;
+
+  /* translucent dark surfaces (var-driven base components inherit these) */
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-soft: rgba(255, 255, 255, 0.07);
+  --surface-cool: rgba(255, 255, 255, 0.05);
+
+  /* text */
+  --ink: #ecf4f0;
+  --muted: #9db5ac;
+
+  /* hairlines */
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.18);
+
+  /* brightened foreground accents (background usages overridden below) */
+  --pine: #6fe3d6;
+  --pine-dark: #022f2a;
+  --teal: #34d1c4;
+  --teal-soft: rgba(52, 209, 196, 0.16);
+  --amber: #e9c97a;
+  --amber-soft: rgba(220, 180, 90, 0.14);
+  --coral: #ee615b;
+  --coral-dark: #ff8d85;
+
+  /* per-space accents (bright on dark) */
+  --space-accent: #34d1c4;
+  --space-accent-strong: #19a79c;
+  --space-accent-soft: rgba(52, 209, 196, 0.16);
+  --space-accent-faint: rgba(52, 209, 196, 0.10);
+  --space-accent-shadow: rgba(52, 209, 196, 0.35);
+  --space-accent-text: #6fe3d6;
+
+  /* glass material */
+  --glass-fill: rgba(15, 32, 27, 0.66);
+  --glass-fill-strong: rgba(8, 20, 17, 0.8);
+  --glass-row: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.13);
+  --glass-highlight: rgba(255, 255, 255, 0.16);
+  --glass-blur: 20px;
+
+  /* radii (rounder, more premium) */
+  --radius-sm: 14px;
+  --radius: 18px;
+  --radius-lg: 24px;
+
+  /* shadows + glow */
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.34);
+  --shadow-lift: 0 26px 60px rgba(0, 0, 0, 0.52);
+  --space-glow: 0 0 24px var(--space-accent-shadow);
+  --focus: 0 0 0 3px rgba(52, 209, 196, 0.4);
+}
+
+.app-space--wellness {
+  --space-accent: #34d1c4;
+  --space-accent-strong: #19a79c;
+  --space-accent-soft: rgba(52, 209, 196, 0.16);
+  --space-accent-faint: rgba(52, 209, 196, 0.10);
+  --space-accent-shadow: rgba(52, 209, 196, 0.38);
+  --space-accent-text: #6fe3d6;
+}
+
+.app-space--adhd {
+  --space-accent: #bfe05f;
+  --space-accent-strong: #93b53c;
+  --space-accent-soft: rgba(191, 224, 95, 0.16);
+  --space-accent-faint: rgba(191, 224, 95, 0.10);
+  --space-accent-shadow: rgba(191, 224, 95, 0.36);
+  --space-accent-text: #d6ee7f;
+}
+
+/* ---------------------------------------------------------------------
+   2. Living canvas + global mobile niceties
+   The dark forest base + slowly drifting teal/pine light live on fixed
+   layers behind the (now transparent) shells, so cards refract them.
+   --------------------------------------------------------------------- */
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(22, 138, 131, 0.16), transparent 60%),
+    radial-gradient(120% 90% at 100% 110%, rgba(6, 74, 63, 0.30), transparent 62%),
+    linear-gradient(180deg, #05140f 0%, #03100c 52%, #020b09 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  animation: none; /* retire the old breathing keyframes */
+}
+
+/* two drifting light blobs — transform/opacity only (GPU friendly) */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(8px);
+  opacity: 0.34;
+}
+
+body::before {
+  top: -18vh;
+  left: -12vw;
+  width: 78vw;
+  height: 78vw;
+  max-width: 720px;
+  max-height: 720px;
+  background: radial-gradient(closest-side, rgba(52, 209, 196, 0.22), transparent 70%);
+  animation: glassDriftA 26s ease-in-out infinite;
+}
+
+body::after {
+  right: -16vw;
+  bottom: -20vh;
+  width: 86vw;
+  height: 86vw;
+  max-width: 780px;
+  max-height: 780px;
+  background: radial-gradient(closest-side, rgba(28, 120, 104, 0.26), transparent 70%);
+  animation: glassDriftB 32s ease-in-out infinite;
+}
+
+@keyframes glassDriftA {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8vw, 6vh, 0) scale(1.12); }
+}
+
+@keyframes glassDriftB {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-7vw, -5vh, 0) scale(0.92); }
+}
+
+/* shells become transparent so the canvas shows through and scrolls under glass */
+.app-shell,
+.phone-shell,
+.login-gate,
+.lock-shell,
+.onboarding-shell {
+  background: transparent;
+}
+
+.app-shell::before {
+  display: none;
+}
+
+/* momentum scrolling on the main scroll regions */
+.phone-content,
+.chat-window,
+.tool-list,
+.task-tabs,
+.chat-mode-selector {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------------------------------------------------------------------
+   3. Glass material — panels, cards, chrome, modals
+   --------------------------------------------------------------------- */
+.mode-card,
+.rail-panel,
+.surface-section,
+.module-card,
+.status-card,
+.coach-preview,
+.recommended-tools,
+.hero-card,
+.wellness-shortcuts,
+.tool-list,
+.goal-list,
+.goal-support-panel,
+.start-card,
+.active-start-session,
+.start-history,
+.review-note,
+.recent-reviews,
+.task-capture-panel,
+.task-toolbar,
+.task-list-panel,
+.coach-section,
+.message-body,
+.composer,
+.mode-suggestion,
+.coach-memory-card,
+.memory-draft-panel,
+.metric-card,
+.slider-field,
+.stat-pill,
+.review-summary-card,
+.login-card,
+.lock-panel,
+.onboarding-panel,
+.safety-note,
+.crisis-call,
+.task-menu-panel,
+.journal-entry,
+.sync-status-box,
+.sync-unlock-panel,
+.sync-auto-panel,
+.trusted-vault-panel,
+.sync-troubleshooting-panel,
+.remote-status-pill,
+.remote-url-card,
+.setup-step,
+.production-item {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--glass-highlight);
+}
+
+/* slightly tighter radius for compact panels */
+.metric-card,
+.slider-field,
+.stat-pill,
+.review-summary-card,
+.coach-memory-card,
+.memory-draft-panel,
+.mode-suggestion,
+.sync-status-box,
+.setup-step,
+.production-item,
+.remote-status-pill {
+  border-radius: var(--radius);
+}
+
+/* hero: keep an accent wash on top of the glass */
+.hero-card {
+  background:
+    linear-gradient(135deg, var(--space-accent-faint), transparent 56%),
+    var(--glass-fill);
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-lift), inset 0 1px 0 var(--glass-highlight);
+}
+
+.hero-card h2 { color: var(--ink); }
+.hero-card p { color: var(--muted); }
+.hero-leaf { color: var(--space-accent); opacity: 0.55; }
+
+/* lift on interactive surfaces keeps the base translate, gains accent glow */
+.home-action-row:hover,
+.module-card:hover,
+.coach-preview:hover,
+.goal-card:hover,
+.start-history-row:hover,
+.review-row:hover,
+.task-row:hover,
+.tool-row:hover {
+  border-color: var(--space-accent);
+  box-shadow: var(--shadow-lift), 0 0 24px var(--space-accent-shadow);
+}
+
+/* chat bubbles */
+.message-body { border-radius: var(--radius); }
+.message-body p { color: var(--ink); }
+.message.user .message-body {
+  background:
+    linear-gradient(180deg, var(--space-accent-soft), rgba(16, 34, 29, 0.6));
+  border-color: var(--space-accent-faint);
+}
+.message.user .message-avatar { background: var(--space-accent-strong); color: #04130f; }
+.message-avatar { background: var(--space-accent-soft); color: var(--space-accent-text); }
+
+/* crisis 988 button */
+.crisis-call {
+  border-color: rgba(52, 209, 196, 0.4);
+  color: var(--pine);
+}
+.crisis-call span { color: var(--muted); }
+
+/* ---------------------------------------------------------------------
+   4. Rows, chips, list items — translucent (no blur, for mobile GPU)
+   --------------------------------------------------------------------- */
+.home-action-row,
+.goal-card,
+.start-history-row,
+.review-row,
+.task-row,
+.task-row--depth-1,
+.task-row--depth-2,
+.task-row--depth-3,
+.tool-row,
+.simple-row,
+.data-row,
+.privacy-toggle,
+.choice-chip,
+.empty-state,
+.memory-status-strip span,
+.goal-compose,
+.review-compose,
+.task-capture-panel,
+.recovery-row input {
+  background: var(--glass-row);
+  border-color: var(--glass-border);
+}
+
+.home-action-row,
+.goal-card,
+.start-history-row,
+.review-row,
+.task-row,
+.tool-row,
+.simple-row,
+.data-row {
+  border-radius: var(--radius);
+}
+
+.tool-row.selected,
+.choice-chip.selected,
+.privacy-toggle.selected,
+.task-tab.active {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+}
+
+.home-action-row__icon,
+.coach-memory-card__icon {
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+
+.home-action-row__copy strong,
+.tool-row strong,
+.simple-row strong,
+.data-row strong,
+.privacy-toggle span,
+.journal-entry strong,
+.goal-card__body h4 {
+  color: var(--ink);
+}
+
+.home-action-row__action,
+.module-card button,
+.recommended-tools > button,
+.stat-pill strong,
+.review-summary-card strong,
+.metric-card strong,
+.slider-field strong,
+.mini-progress span,
+.data-row em,
+.privacy-toggle strong,
+.coach-memory-card__notice {
+  color: var(--space-accent-text);
+}
+
+/* progress + rings + trend lines */
+.mini-progress div { background: rgba(255, 255, 255, 0.10); }
+.metric-ring__track { stroke: rgba(255, 255, 255, 0.12); }
+.trend-line svg {
+  background: var(--glass-row);
+  border-color: var(--glass-border);
+}
+.trend-line line { stroke: rgba(255, 255, 255, 0.08); }
+
+/* journal / memory body text */
+.journal-entry p { color: var(--ink); }
+.coach-memory-card__body p,
+.coach-memory-card__title small { color: var(--muted); }
+
+/* ---------------------------------------------------------------------
+   5. Controls + inputs
+   --------------------------------------------------------------------- */
+.primary-button,
+.global-start-button,
+.composer button {
+  color: #04130f;
+  background: linear-gradient(180deg, var(--space-accent), var(--space-accent-strong));
+  box-shadow: 0 10px 24px var(--space-accent-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.app-space--adhd .primary-button,
+.app-space--adhd .global-start-button,
+.app-space--adhd .composer button {
+  color: #182103;
+  background: linear-gradient(180deg, var(--space-accent), var(--space-accent-strong));
+}
+
+.primary-button:hover,
+.global-start-button:hover,
+.composer button:hover {
+  box-shadow: 0 14px 30px var(--space-accent-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* secondary / ghost / icon / chips — glass controls */
+.secondary-button,
+.ghost-button,
+.icon-text-button,
+.chat-mode-chip,
+.tool-suggestion-row button,
+.task-bottom-actions button,
+.task-icon-button,
+.google-auth-button,
+.phone-wellness-button,
+.task-tab,
+.segmented-control {
+  color: var(--space-accent-text);
+  background: var(--glass-row);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.secondary-button:hover,
+.ghost-button:hover,
+.icon-text-button:hover,
+.tool-suggestion-row button:hover,
+.task-bottom-actions button:hover,
+.task-icon-button:hover {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+
+.google-auth-button { color: var(--ink); }
+.google-auth-button:hover { border-color: var(--space-accent); background: var(--space-accent-soft); }
+.chat-mode-chip { background: var(--glass-row); color: var(--pine); }
+.chat-mode-chip.active {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+
+.segmented-control button { color: var(--muted); }
+.segmented-control button.selected {
+  background: var(--glass-fill-strong);
+  color: var(--space-accent-text);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+
+.icon-text-button { color: var(--space-accent-text); }
+
+/* fields */
+.field-block input,
+.field-block select,
+.field-block textarea,
+.tool-step textarea,
+.composer input,
+.contact-row input,
+.start-options select,
+.task-capture-grid select,
+.task-tab-edit input,
+.task-filter-row select,
+.task-menu-grid input,
+.task-menu-grid select,
+.task-subtask-input,
+.recovery-panel input,
+.recovery-row input {
+  background: var(--glass-row);
+  border: 1px solid var(--glass-border);
+  color: var(--ink);
+}
+
+.field-block input::placeholder,
+.field-block textarea::placeholder,
+.composer input::placeholder,
+.contact-row input::placeholder {
+  color: #7e948c;
+}
+
+.field-block span,
+.slider-field span,
+.consent-row strong,
+.task-capture-grid label,
+.start-options label,
+.field-block input,
+.field-block select,
+.field-block textarea {
+  color: var(--ink);
+}
+
+input[type="range"],
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--space-accent);
+}
+
+.composer { background: var(--glass-fill-strong); }
+.composer input { background: transparent; border: 0; color: var(--ink); }
+
+/* segmented / switcher / app-space tabs */
+.app-space-switcher {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border);
+}
+.app-space-tab { color: rgba(255, 255, 255, 0.7); }
+.app-space-tab.active {
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+
+/* breathing orb */
+.breath-orb {
+  background: var(--space-accent-soft);
+  border-color: var(--glass-border);
+  color: var(--space-accent-text);
+}
+
+/* api status pills */
+.api-status {
+  background: var(--glass-row);
+  border-color: var(--glass-border);
+  color: var(--muted);
+}
+.api-status--openrouter,
+.api-status--openrouter-user,
+.api-status--openai {
+  border-color: rgba(52, 209, 196, 0.4);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+.api-status--demo {
+  border-color: rgba(220, 180, 90, 0.4);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.api-status--offline,
+.api-status--api-404,
+.api-status--api-misconfigured {
+  border-color: rgba(238, 97, 91, 0.4);
+  background: rgba(238, 97, 91, 0.14);
+  color: var(--coral-dark);
+}
+
+/* ---------------------------------------------------------------------
+   6. Mobile chrome — header, floating dock, more panel (PRIMARY focus)
+   --------------------------------------------------------------------- */
+:root {
+  --phone-bottom-nav-height: calc(86px + env(safe-area-inset-bottom));
+}
+
+.phone-header {
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+.phone-brand { color: var(--ink); }
+.phone-brand small { color: var(--muted); }
+
+.phone-wellness-button { color: var(--pine); }
+.phone-wellness-button.active {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+
+/* floating glass dock */
+.phone-bottom-nav {
+  right: 12px;
+  left: 12px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+  box-shadow: var(--shadow-lift), inset 0 1px 0 var(--glass-highlight);
+}
+
+.phone-nav-item {
+  color: var(--muted);
+  border-radius: var(--radius);
+}
+.phone-nav-item.active {
+  color: var(--space-accent-text);
+  background: var(--space-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--glass-border), 0 0 18px var(--space-accent-shadow);
+}
+/* retire the tiny top dash — the filled pill is the active indicator now */
+.phone-nav-item.active::before { display: none; }
+
+.phone-more-panel {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(26px) saturate(150%);
+  box-shadow: var(--shadow-lift), inset 0 1px 0 var(--glass-highlight);
+}
+.phone-more-heading strong { color: var(--ink); }
+.phone-more-heading button,
+.phone-install-hint__close {
+  background: var(--glass-row);
+  border-color: var(--glass-border);
+  color: var(--pine);
+}
+.phone-more-item {
+  background: var(--glass-row);
+  border-color: var(--glass-border);
+  color: var(--pine);
+}
+.phone-more-item.active {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+
+.phone-install-hint {
+  background: var(--glass-fill);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+.phone-install-hint__icon { background: var(--space-accent-soft); color: var(--space-accent-text); }
+.phone-install-hint__copy strong { color: var(--ink); }
+.phone-install-hint__install { background: var(--space-accent); color: #04130f; }
+
+.phone-shell--coach .composer,
+.phone-shell--chat .composer {
+  background: var(--glass-fill-strong);
+}
+
+/* ---------------------------------------------------------------------
+   7. Desktop chrome (kept coherent, secondary)
+   --------------------------------------------------------------------- */
+.sidebar {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: var(--shadow);
+}
+
+.topbar {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: var(--shadow-soft);
+}
+.topbar h1 { color: var(--ink); }
+.topbar p { color: var(--muted); }
+
+.nav-section-label { color: rgba(255, 255, 255, 0.6); }
+.rail-heading { color: var(--pine); }
+.rail-heading h2,
+.section-heading h2 { color: var(--ink); }
+
+/* ---------------------------------------------------------------------
+   8. Tinted panels — safety (red), warnings (amber)
+   --------------------------------------------------------------------- */
+.safety-flow {
+  border-color: rgba(238, 97, 91, 0.4);
+  background:
+    linear-gradient(180deg, rgba(238, 97, 91, 0.12), transparent 60%),
+    var(--glass-fill);
+}
+.safety-flow h2 { color: var(--ink); }
+.safety-flow p { color: var(--muted); }
+.safety-flow__icon { background: rgba(238, 97, 91, 0.2); color: var(--coral-dark); }
+
+.safety-action {
+  background: var(--glass-row);
+  border-color: rgba(238, 97, 91, 0.32);
+  color: var(--ink);
+}
+.safety-action--primary { border-color: var(--coral); }
+.safety-action svg { color: var(--coral-dark); }
+.safety-action strong { color: var(--ink); }
+.safety-action span { color: var(--muted); }
+
+.danger-button {
+  background: rgba(238, 97, 91, 0.16);
+  border: 1px solid rgba(238, 97, 91, 0.4);
+  color: var(--coral-dark);
+}
+
+.notice-strip--success {
+  border-color: rgba(52, 209, 196, 0.4);
+  background: var(--space-accent-soft);
+  color: var(--pine);
+}
+.notice-strip--warning {
+  border-color: rgba(220, 180, 90, 0.4);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.recovery-panel {
+  border-color: rgba(220, 180, 90, 0.34);
+  background: rgba(220, 180, 90, 0.12);
+}
+.recovery-panel strong,
+.review-note strong { color: var(--ink); }
+.recovery-panel p { color: var(--muted); }
+.recovery-panel code { color: var(--coral-dark); }
+
+.login-card__safety {
+  border-color: rgba(238, 97, 91, 0.34);
+  background: rgba(238, 97, 91, 0.1);
+}
+.login-card__safety strong { color: var(--coral-dark); }
+.lock-error { color: var(--coral-dark); }
+
+.sync-conflict-panel,
+.sync-troubleshooting-panel--warning,
+.remote-recovery-panel {
+  border-color: rgba(220, 180, 90, 0.36);
+  background: rgba(220, 180, 90, 0.12);
+}
+.sync-conflict-panel strong,
+.remote-recovery-panel strong { color: var(--ink); }
+.sync-conflict-panel p,
+.remote-recovery-panel p { color: var(--amber); }
+
+/* completed checklist / done states */
+.setup-step.complete,
+.production-item.complete {
+  border-color: rgba(52, 209, 196, 0.34);
+  background: var(--space-accent-soft);
+}
+.setup-checklist__score { background: var(--space-accent-soft); color: var(--space-accent-text); }
+
+/* misc foreground fixes on dark */
+.setup-step strong,
+.production-item strong,
+.sync-status-box strong,
+.remote-status-pill strong,
+.trusted-vault-panel strong,
+.sync-troubleshooting-panel strong { color: var(--ink); }
+
+.remote-url-card code,
+.remote-recovery-panel code,
+.sync-status-box strong {
+  background: var(--glass-row);
+  color: var(--space-accent-text);
+}
+
+.login-card__body h2,
+.onboarding-step h2 { color: var(--ink); }
+
+/* ---------------------------------------------------------------------
+   8b. Phone-shell overrides — the base ships higher-specificity
+   `.phone-shell .x` rules with light backgrounds that must be beaten.
+   --------------------------------------------------------------------- */
+.phone-shell .hero-card {
+  background:
+    linear-gradient(135deg, var(--space-accent-faint), transparent 58%),
+    var(--glass-fill);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--glass-highlight);
+}
+
+.phone-shell--coach .composer,
+.phone-shell--chat .composer {
+  background: var(--glass-fill-strong);
+}
+
+/* ---------------------------------------------------------------------
+   9. Accessibility + performance fallbacks
+   --------------------------------------------------------------------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-fill: rgba(14, 30, 26, 0.94);
+    --glass-fill-strong: rgba(8, 20, 17, 0.97);
+    --glass-row: rgba(255, 255, 255, 0.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
+  body::before,
+  body::after { animation: none !important; }
+}

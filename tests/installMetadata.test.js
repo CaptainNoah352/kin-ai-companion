@@ -15,8 +15,8 @@ test("web app manifest is installable and phone-friendly", () => {
   assert.equal(manifest.start_url, ".");
   assert.equal(manifest.scope, ".");
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.theme_color, "#064f43");
-  assert.equal(manifest.background_color, "#f4f7f7");
+  assert.equal(manifest.theme_color, "#05140f");
+  assert.equal(manifest.background_color, "#05140f");
   assert.equal(manifest.orientation, "portrait");
   assert.equal(manifest.prefer_related_applications, false);
   assert.ok(manifest.icons.some((icon) => icon.src === "kin-icon-192.png" && icon.purpose === "any"));

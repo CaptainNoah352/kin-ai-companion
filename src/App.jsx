@@ -90,6 +90,7 @@ import {
 } from "./features/sync/vaultDataService.js";
 import { downloadJson } from "./features/privacy/dataExport.js";
 import "./styles.css";
+import "./theme-liquid-glass.css";
 
 const appLockSessionKey = "kin.v2.appLock.unlockedAt";
 const googleDriveTokenSessionKey = "kin.v2.googleDrive.accessToken";
