@@ -24,10 +24,12 @@ export function SyncCenter({
   onForgetTrustedVault,
   message,
   error,
+  isHostedBuild = false,
 }) {
   const [passcode, setPasscode] = useState("");
   const [apiKey, setApiKey] = useState(userOpenRouter?.apiKey || "");
   const [model, setModel] = useState(userOpenRouter?.model || "openai/gpt-4o-mini");
+  const hosted = Boolean(isHostedBuild);
   const autoSyncEnabled = driveSync?.autoSyncEnabled !== false;
   const autoSyncIntervalSeconds = normalizeAutoSyncInterval(driveSync?.autoSyncIntervalSeconds);
 
@@ -55,8 +57,12 @@ export function SyncCenter({
     <section className="surface-section sync-card">
       <div className="section-heading">
         <div>
-          <h2>Google Drive sync</h2>
-          <p>Encrypted vault sync through your Google Drive app data folder.</p>
+          <h2>{hosted ? "Encrypted Drive backup" : "Google Drive sync"}</h2>
+          <p>
+            {hosted
+              ? "Optional encrypted backup and restore through your own Google Drive app data folder."
+              : "Encrypted vault sync through your Google Drive app data folder."}
+          </p>
         </div>
         <Cloud size={22} />
       </div>
@@ -64,13 +70,13 @@ export function SyncCenter({
       <div className="sync-status-grid">
         <StatusBox label="Google account" value={googleSession?.email || "Not signed in"} />
         <StatusBox label="Vault" value={vaultUnlocked ? "Unlocked" : "Locked"} />
-        <StatusBox label="Drive sync" value={driveSync?.enabled ? "Enabled" : "Not enabled"} />
+        <StatusBox label={hosted ? "Drive backup" : "Drive sync"} value={driveSync?.enabled ? "Enabled" : hosted ? "Optional" : "Not enabled"} />
         <StatusBox label="Auto sync" value={autoSyncEnabled ? "On" : "Paused"} />
         <StatusBox label="Last synced" value={formatTimestamp(driveSync?.lastSyncedAt)} />
         <StatusBox label="Last auto sync" value={formatTimestamp(driveSync?.lastAutoSyncAt)} />
         <StatusBox label="Last upload" value={formatTimestamp(driveSync?.lastAutoPushAt)} />
         <StatusBox label="Last pull" value={formatTimestamp(driveSync?.lastAutoPullAt)} />
-        <StatusBox label="Drive token" value={hasDriveAccessToken ? "Ready" : "Refresh needed"} />
+        <StatusBox label="Drive token" value={hasDriveAccessToken ? "Ready" : hosted && !vaultUnlocked ? "Not needed" : "Refresh needed"} />
         <StatusBox label="Conflict" value={hasConflict ? "Needs choice" : "None"} />
         <StatusBox label="Status" value={formatSyncStatus(driveSync?.status)} />
       </div>
@@ -78,9 +84,9 @@ export function SyncCenter({
       <div className={hasConflict ? "sync-troubleshooting-panel sync-troubleshooting-panel--warning" : "sync-troubleshooting-panel"}>
         <AlertTriangle size={18} />
         <div>
-          <strong>Sync troubleshooting</strong>
-          <p>{syncHealthCopy({ driveSync, hasDriveAccessToken, hasConflict })}</p>
-          <small>Next action: {syncNextAction({ googleSession, vaultUnlocked, driveSync, hasDriveAccessToken, hasConflict, error })}</small>
+          <strong>{hosted ? "Backup status" : "Sync troubleshooting"}</strong>
+          <p>{syncHealthCopy({ driveSync, hasDriveAccessToken, hasConflict, vaultUnlocked, hosted })}</p>
+          <small>Next action: {syncNextAction({ googleSession, vaultUnlocked, driveSync, hasDriveAccessToken, hasConflict, error, hosted })}</small>
         </div>
       </div>
 
@@ -98,10 +104,12 @@ export function SyncCenter({
           </label>
           <button className="primary-button primary-button--auto" type="button" onClick={unlockVault}>
             <KeyRound size={17} />
-            Create / unlock vault
+            {hosted ? "Set up backup vault" : "Create / unlock vault"}
           </button>
           <p className="plain-copy">
-            This passcode encrypts the Google Drive vault. It is not sent to Google, GitHub, or Kin servers.
+            {hosted
+              ? "Kin works without this step. Use a backup vault only when you want encrypted Drive sync or restore."
+              : "This passcode encrypts the Google Drive vault. It is not sent to Google, GitHub, or Kin servers."}
           </p>
         </div>
       )}
@@ -266,9 +274,13 @@ function formatSyncStatus(status) {
   return labels[status] || "Unknown";
 }
 
-function syncHealthCopy({ driveSync, hasDriveAccessToken, hasConflict }) {
+function syncHealthCopy({ driveSync, hasDriveAccessToken, hasConflict, vaultUnlocked, hosted }) {
   if (hasConflict) return "Drive and this device both changed. Kin is waiting for your choice.";
   if (driveSync?.status === "error") return driveSync.error || "The last Drive sync failed.";
+  if (hosted && !vaultUnlocked) return "Kin is ready on this device. Drive backup is optional and can be set up later.";
+  if (!driveSync?.enabled || !driveSync?.fileId) {
+    return hosted ? "No Drive backup is linked yet. Local Kin data stays in this app/browser." : "No Drive vault file has been linked from this browser yet.";
+  }
   if (driveSync?.status === "needs-google-session" || !hasDriveAccessToken) {
     return "Google Drive access needs a fresh browser token.";
   }
@@ -277,13 +289,15 @@ function syncHealthCopy({ driveSync, hasDriveAccessToken, hasConflict }) {
   return "No Drive vault file has been linked from this browser yet.";
 }
 
-function syncNextAction({ googleSession, vaultUnlocked, driveSync, hasDriveAccessToken, hasConflict, error }) {
+function syncNextAction({ googleSession, vaultUnlocked, driveSync, hasDriveAccessToken, hasConflict, error, hosted }) {
   if (!googleSession?.email) return "Sign in with Google.";
-  if (!vaultUnlocked) return "Create or unlock the encrypted vault.";
+  if (!vaultUnlocked) return hosted ? "Use Kin now, or set up encrypted backup when you have time." : "Create or unlock the encrypted vault.";
   if (hasConflict) return "Choose Use Drive copy or Use this device.";
+  if (!driveSync?.enabled || !driveSync?.fileId) {
+    return hosted ? "Tap Sync now only if you want to link a Drive backup." : "Tap Sync now to create or find the Drive vault.";
+  }
   if (driveSync?.status === "needs-google-session" || !hasDriveAccessToken) return "Tap Sync now to refresh Google Drive access.";
   if (driveSync?.status === "error" || error) return "Fix the shown error, then tap Sync now.";
-  if (!driveSync?.enabled || !driveSync?.fileId) return "Tap Sync now to create or find the Drive vault.";
   if (driveSync?.autoSyncEnabled === false) return "Turn Auto sync on.";
   return "Leave Kin open; edits push automatically and other devices poll Drive.";
 }

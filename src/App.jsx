@@ -1050,7 +1050,7 @@ export default function App() {
         setVaultPasscode(passcode);
         setVaultUnlocked(true);
         setSyncMessage(`Vault unlocked. Last saved ${formatSyncTimestamp(payload.updatedAt)}.`);
-        void getDriveAccessToken({ allowTokenPrompt: true, prompt: "" }).catch((tokenError) => {
+        void getDriveAccessToken({ allowTokenPrompt: false, prompt: "" }).catch((tokenError) => {
           setDriveSync((current) => ({
             ...createDefaultDriveSync(current),
             enabled: true,
@@ -1648,16 +1648,19 @@ export default function App() {
               apiMode={apiMode}
               appLock={appLock}
               hasDriveAccessToken={Boolean(driveAccessToken)}
+              isHostedBuild={isGithubPagesRuntime()}
             />
-            <ProductionReadinessChecklist
-              googleSession={googleSession}
-              vaultUnlocked={vaultUnlocked}
-              driveSync={driveSync}
-              appLock={appLock}
-              trustedVaultUnlock={trustedVaultUnlock}
-              apiMode={apiMode}
-              hasDriveAccessToken={Boolean(driveAccessToken)}
-            />
+            {!isGithubPagesRuntime() && (
+              <ProductionReadinessChecklist
+                googleSession={googleSession}
+                vaultUnlocked={vaultUnlocked}
+                driveSync={driveSync}
+                appLock={appLock}
+                trustedVaultUnlock={trustedVaultUnlock}
+                apiMode={apiMode}
+                hasDriveAccessToken={Boolean(driveAccessToken)}
+              />
+            )}
           </>
         }
         syncCenter={
@@ -1684,6 +1687,7 @@ export default function App() {
             onForgetTrustedVault={handleForgetTrustedVault}
             message={syncMessage}
             error={syncError || driveSync?.error || ""}
+            isHostedBuild={isGithubPagesRuntime()}
           />
         }
       />
@@ -2233,7 +2237,7 @@ function getPhoneInstallGuide() {
   if (typeof navigator === "undefined") return "Use your browser menu to add Kin to your Home Screen.";
   const userAgent = navigator.userAgent || "";
   if (/iphone|ipad|ipod/i.test(userAgent)) {
-    return "iPhone: tap Share, then Add to Home Screen.";
+    return "iPhone: tap Share, then Add to Home Screen. Open Kin from the new icon and sign in there once.";
   }
   return "Android: tap Install app when offered, or use your browser menu.";
 }
