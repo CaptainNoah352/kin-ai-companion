@@ -18,7 +18,8 @@ import {
   Undo2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { buildKinApiUrl, shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
+import { formatKinApiError, postKinApiJson } from "../../lib/kinApiClient.js";
+import { shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
 import { createGoal } from "../goals/goalService.js";
 import {
   addSubtask,
@@ -100,12 +101,12 @@ export function AdhdTasksCenter({
     setNotice("");
     try {
       const task = shouldUseKinApiBackend()
-        ? await fetchServerTaskBreakdown({ task: title, spiciness })
+        ? await fetchServerTaskBreakdown({ task: title, spiciness }, { onStatus: setNotice })
         : await createBrowserTaskBreakdown({ task: title, spiciness, userOpenRouter });
       applyChange((current) => addTask(current, task));
       setDraft(emptyDraft);
     } catch (error) {
-      setNotice(error.message || "Task breakdown could not be created.");
+      setNotice(formatKinApiError(error, "Task breakdown could not be created."));
     } finally {
       setIsBreakingDown(false);
     }
@@ -460,18 +461,11 @@ function StatPill({ label, value }) {
   );
 }
 
-async function fetchServerTaskBreakdown({ task, spiciness }) {
+async function fetchServerTaskBreakdown({ task, spiciness }, { onStatus } = {}) {
   if (!shouldUseKinApiBackend()) {
     throw new Error("Add a user-owned OpenRouter key in Privacy / Sync to use Magic breakdown without a Kin API backend.");
   }
-  const response = await fetch(buildKinApiUrl("/api/adhd/tasks/breakdown"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task, spiciness }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Task breakdown could not be created.");
-  return data;
+  return postKinApiJson("/api/adhd/tasks/breakdown", { task, spiciness }, { onStatus });
 }
 
 function downloadText(filename, content, type) {

@@ -242,18 +242,23 @@ export async function chatReply({
 }
 
 async function openRouterReply(promptParts, conversation, { modelRole = aiModelRoles.normalCoach } = {}) {
-  return openRouterChatCompletion({
-    model: getOpenRouterModelForRole(modelRole, process.env),
-    messages: [
-      {
-        role: "system",
-        content: promptParts.join("\n\n"),
-      },
-      ...conversation,
-    ],
-    fallbackModel: modelRole === aiModelRoles.deepSupport ? openRouterModelDefaults.deepSupportFallback : "",
-    fallbackLabel: "OpenRouter request",
-  });
+  try {
+    return await openRouterChatCompletion({
+      model: getOpenRouterModelForRole(modelRole, process.env),
+      messages: [
+        {
+          role: "system",
+          content: promptParts.join("\n\n"),
+        },
+        ...conversation,
+      ],
+      fallbackModel: modelRole === aiModelRoles.deepSupport ? openRouterModelDefaults.deepSupportFallback : "",
+      fallbackLabel: "OpenRouter request",
+    });
+  } catch (error) {
+    error.modelRole = modelRole;
+    throw error;
+  }
 }
 
 async function openRouterChatCompletion({ model, messages, responseFormat, fallbackModel = "", fallbackLabel = "OpenRouter request" }) {
@@ -272,14 +277,20 @@ async function openRouterChatCompletion({ model, messages, responseFormat, fallb
     }),
   });
 
-  let response = await request(model);
+  let selectedModel = model;
+  let response = await request(selectedModel);
   if (!response.ok && fallbackModel && fallbackModel !== model) {
-    response = await request(fallbackModel);
+    selectedModel = fallbackModel;
+    response = await request(selectedModel);
   }
 
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`${fallbackLabel} failed: ${response.status} ${details}`);
+    const error = new Error(`${fallbackLabel} failed: ${response.status} ${details}`);
+    error.provider = "openrouter";
+    error.providerStatus = response.status;
+    error.providerModel = selectedModel;
+    throw error;
   }
 
   const data = await response.json();
@@ -290,12 +301,18 @@ async function openRouterChatCompletion({ model, messages, responseFormat, fallb
 }
 
 async function openRouterTaskBreakdown({ task, spiciness }) {
-  const text = await openRouterChatCompletion({
-    model: getOpenRouterModelForRole(aiModelRoles.adhdTask, process.env) || taskBreakdownOpenRouterModel,
-    messages: buildTaskBreakdownMessages({ task, spiciness }),
-    responseFormat: { type: "json_object" },
-    fallbackLabel: "OpenRouter task breakdown",
-  });
+  let text;
+  try {
+    text = await openRouterChatCompletion({
+      model: getOpenRouterModelForRole(aiModelRoles.adhdTask, process.env) || taskBreakdownOpenRouterModel,
+      messages: buildTaskBreakdownMessages({ task, spiciness }),
+      responseFormat: { type: "json_object" },
+      fallbackLabel: "OpenRouter task breakdown",
+    });
+  } catch (error) {
+    error.modelRole = aiModelRoles.adhdTask;
+    throw error;
+  }
 
   return normalizeBreakdownResponse(text, task);
 }
@@ -316,7 +333,11 @@ async function openAiReply(promptParts, conversation) {
 
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`OpenAI request failed: ${response.status} ${details}`);
+    const error = new Error(`OpenAI request failed: ${response.status} ${details}`);
+    error.provider = "openai";
+    error.providerStatus = response.status;
+    error.providerModel = process.env.OPENAI_MODEL;
+    throw error;
   }
 
   const data = await response.json();
@@ -343,7 +364,12 @@ async function openAiTaskBreakdown({ task, spiciness }) {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI task breakdown failed: ${response.status}`);
+    const error = new Error(`OpenAI task breakdown failed: ${response.status}`);
+    error.provider = "openai";
+    error.providerStatus = response.status;
+    error.providerModel = process.env.OPENAI_MODEL;
+    error.modelRole = aiModelRoles.adhdTask;
+    throw error;
   }
 
   const data = await response.json();
@@ -493,6 +519,17 @@ function backupActionsForLevel(level) {
   return [];
 }
 
+function buildAiErrorPayload(error, { endpoint, fallbackMessage }) {
+  return {
+    error: fallbackMessage,
+    endpoint,
+    provider: error?.provider || getAiProvider(),
+    modelRole: error?.modelRole || "",
+    model: error?.providerModel || "",
+    providerStatus: error?.providerStatus || 0,
+  };
+}
+
 app.get("/api/health", (_req, res) => {
   res.json(buildApiStatus());
 });
@@ -584,7 +621,10 @@ app.post("/api/chat", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      error: "Kin had trouble responding. Try again in a moment.",
+      ...buildAiErrorPayload(error, {
+        endpoint: "/api/chat",
+        fallbackMessage: "Kin had trouble responding. Try again in a moment.",
+      }),
     });
   }
 });
@@ -601,9 +641,12 @@ app.post("/api/adhd/tasks/breakdown", async (req, res) => {
   } catch (error) {
     console.error("Task breakdown failed:", error.message);
     res.status(error.statusCode || 500).json({
-      error: error.statusCode === 409
-        ? "Task breakdown needs OpenRouter or OpenAI configured."
-        : "Task breakdown could not be created. Try again in a moment.",
+      ...buildAiErrorPayload(error, {
+        endpoint: "/api/adhd/tasks/breakdown",
+        fallbackMessage: error.statusCode === 409
+          ? "Task breakdown needs OpenRouter or OpenAI configured."
+          : "Task breakdown could not be created. Try again in a moment.",
+      }),
     });
   }
 });

@@ -63,6 +63,22 @@ export function addMemorySummary(memory, text, { limit = MEMORY_SUMMARY_LIMIT } 
   };
 }
 
+// Keeps a single evolving "auto" summary for the active chat so background
+// auto-save updates one entry instead of appending a new one each turn.
+export function setAutoChatSummary(memory, text, { limit = MEMORY_SUMMARY_LIMIT } = {}) {
+  const current = createDefaultMemory(memory);
+  const withoutAuto = current.summaries.filter((summary) => !summary.auto);
+  const summary = makeMemorySummary(text);
+  if (!summary) {
+    return { ...current, summaries: withoutAuto };
+  }
+  return {
+    ...current,
+    summaries: [{ ...summary, auto: true }, ...withoutAuto].slice(0, limit),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function sanitizeMemoryForAi(memory, { summaryLimit = AI_MEMORY_SUMMARY_LIMIT } = {}) {
   const current = createDefaultMemory(memory);
   const summaries = current.summaries
@@ -99,6 +115,7 @@ function normalizeMemorySummary(summary) {
     id: compactText(summary.id) || `summary-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     text: text.slice(0, 600),
     createdAt: compactText(summary.createdAt) || new Date().toISOString(),
+    ...(summary.auto ? { auto: true } : {}),
   };
 }
 

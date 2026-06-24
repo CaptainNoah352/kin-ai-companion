@@ -9,11 +9,11 @@ export const aiModelRoles = Object.freeze({
 });
 
 export const openRouterModelDefaults = Object.freeze({
-  [aiModelRoles.normalCoach]: "google/gemini-3.1-flash-lite",
+  [aiModelRoles.normalCoach]: "anthropic/claude-haiku-4.5",
   [aiModelRoles.safetyBackup]: "google/gemini-3.1-flash-lite",
   [aiModelRoles.adhdTask]: "google/gemini-3.1-flash-lite",
   [aiModelRoles.goal]: "google/gemini-3.1-flash-lite",
-  [aiModelRoles.deepSupport]: "openai/gpt-5.4-mini",
+  [aiModelRoles.deepSupport]: "anthropic/claude-sonnet-4.5",
   deepSupportFallback: "anthropic/claude-haiku-4.5",
   [aiModelRoles.summary]: "google/gemini-3.1-flash-lite",
   [aiModelRoles.insight]: "google/gemini-3.1-flash-lite",

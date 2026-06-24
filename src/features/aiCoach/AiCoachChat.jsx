@@ -1,14 +1,11 @@
-import { Brain, FileText, RotateCcw, Save, Send, ShieldAlert, UserRound, X } from "lucide-react";
+import { Brain, RotateCcw, Send, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createCoachReply } from "./aiCoachService.js";
 import { buildCoachChatPayload } from "./chatPayload.js";
 import { createOpenRouterBrowserReply } from "./openRouterClient.js";
-import { buildKinApiUrl, shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
-import {
-  buildConversationSummary,
-  getMemoryStats,
-  MEMORY_SUMMARY_MIN_LENGTH,
-} from "../memory/memoryService.js";
+import { formatKinApiError, postKinApiJson } from "../../lib/kinApiClient.js";
+import { shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
+import { buildConversationSummary, MEMORY_SUMMARY_MIN_LENGTH } from "../memory/memoryService.js";
 import { classifySafety, shouldPauseForSafety } from "../safety/safetyRouter.js";
 import { buildModeSuggestion, chatModes } from "../supportModes/supportModeService.js";
 
@@ -30,8 +27,7 @@ export function AiCoachChat({
   region,
   onSafety,
   onOpenModule,
-  onOpenMemory,
-  onSaveMemorySummary,
+  onAutoSaveMemory,
   userOpenRouter,
   consent,
   chatMode = "Support",
@@ -42,51 +38,38 @@ export function AiCoachChat({
 }) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [memoryDraft, setMemoryDraft] = useState("");
-  const [memoryNotice, setMemoryNotice] = useState("");
   const [modeSuggestion, setModeSuggestion] = useState(null);
-  const isPhone = useMediaQuery("(max-width: 700px)");
+  const [apiNotice, setApiNotice] = useState("");
   const endRef = useRef(null);
+  const lastAutoSavedRef = useRef("");
   const visibleMessages = messages.length ? messages : starterMessages;
   const generatedSummary = useMemo(() => buildConversationSummary(messages), [messages]);
-  const memoryStats = useMemo(() => getMemoryStats(memory), [memory]);
   const hasUserMessage = messages.some((message) => message.role === "user");
   const hasAssistantAfterUser = messages.some(
     (message, index) => message.role === "assistant" && messages.slice(0, index).some((item) => item.role === "user"),
   );
-  const canSaveChatMemory =
+  const canAutoSaveMemory =
     hasUserMessage && hasAssistantAfterUser && generatedSummary.length >= MEMORY_SUMMARY_MIN_LENGTH;
-  const memoryUpdated = memoryStats.updatedAt ? formatMemoryTimestamp(memoryStats.updatedAt) : "Not updated yet";
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isSending]);
 
-  function startMemoryReview() {
-    setMemoryDraft(generatedSummary);
-    setMemoryNotice("");
-  }
+  // Auto-save the conversation to local memory in the background. One evolving
+  // summary per chat (replaced as it grows), no manual save needed.
+  useEffect(() => {
+    if (!canAutoSaveMemory) return undefined;
+    if (generatedSummary === lastAutoSavedRef.current) return undefined;
+    const timer = setTimeout(() => {
+      onAutoSaveMemory?.(generatedSummary);
+      lastAutoSavedRef.current = generatedSummary;
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [generatedSummary, canAutoSaveMemory, onAutoSaveMemory]);
 
-  function cancelMemoryReview() {
-    setMemoryDraft("");
-    setMemoryNotice("");
-  }
-
-  function saveReviewedMemory() {
-    const trimmed = memoryDraft.trim();
-    if (trimmed.length < MEMORY_SUMMARY_MIN_LENGTH) {
-      setMemoryNotice("Add a little more detail before saving this memory.");
-      return;
-    }
-
-    const saved = onSaveMemorySummary?.(trimmed);
-    if (saved === false) {
-      setMemoryNotice("This memory could not be saved.");
-      return;
-    }
-
-    setMemoryDraft("");
-    setMemoryNotice("Saved to local memory.");
+  function resetChat() {
+    lastAutoSavedRef.current = "";
+    setMessages(starterMessages);
   }
 
   async function sendMessage(text = input) {
@@ -125,6 +108,7 @@ export function AiCoachChat({
     setMessages(nextMessages);
     setInput("");
     setIsSending(true);
+    setApiNotice("");
     const payload = buildCoachChatPayload({
       messages: nextMessages,
       mood,
@@ -143,7 +127,7 @@ export function AiCoachChat({
 
     try {
       const data = usesKinApiBackend
-          ? await fetchServerCoachReply(payload)
+          ? await fetchServerCoachReply(payload, { onStatus: setApiNotice })
           : userOpenRouter?.apiKey
             ? await createOpenRouterBrowserReply({ payload, userOpenRouter })
           : createCoachReply({
@@ -173,14 +157,16 @@ export function AiCoachChat({
           activeAppSpace: data.activeAppSpace || activeAppSpace,
         },
       ]);
-    } catch {
+    } catch (error) {
       if (usesKinApiBackend) {
         setMessages((current) => [
           ...current,
           {
             role: "assistant",
-            content:
+            content: formatKinApiError(
+              error,
               "Kin could not reach the AI server, so the real chat model did not respond. Check that the Kin API is running, then try again.",
+            ),
             safetyLevelAtGeneration: "none",
             recommendedModuleIds: [],
             supportModes: suggestion.modes,
@@ -216,6 +202,7 @@ export function AiCoachChat({
         },
       ]);
     } finally {
+      setApiNotice("");
       setIsSending(false);
     }
   }
@@ -260,68 +247,6 @@ export function AiCoachChat({
         <div className="notice-strip">AI disclosure must be accepted before using Chat.</div>
       )}
 
-      {!isPhone && (
-      <section className="coach-memory-card" aria-label="Memory shortcut">
-        <div className="coach-memory-card__icon">
-          <UserRound size={18} />
-        </div>
-        <div className="coach-memory-card__body">
-          <div className="coach-memory-card__title">
-            <strong>Memory</strong>
-            <small>
-              {memoryStats.summaryCount} saved summaries - {memoryUpdated}
-            </small>
-          </div>
-          <p>
-            {consent?.allowPersonalization
-              ? "Kin can use concise local memory when you send Chat messages."
-              : "Personalization is off, so saved memory stays local and is not sent to AI."}
-          </p>
-          {memoryNotice && <small className="coach-memory-card__notice">{memoryNotice}</small>}
-        </div>
-        <div className="coach-memory-card__actions">
-          <button className="secondary-button secondary-button--auto" type="button" onClick={onOpenMemory}>
-            <FileText size={16} />
-            Review memory
-          </button>
-          <button
-            className="primary-button primary-button--auto"
-            type="button"
-            onClick={startMemoryReview}
-            disabled={!canSaveChatMemory}
-            title={canSaveChatMemory ? "Review a local summary before saving it." : "Chat with Kin first, then save a memory."}
-          >
-            <Save size={16} />
-            Save this chat
-          </button>
-        </div>
-      </section>
-      )}
-
-      {memoryDraft && (
-        <section className="memory-draft-panel" aria-label="Review chat memory">
-          <label className="field-block">
-            <span>Review before saving</span>
-            <textarea
-              value={memoryDraft}
-              onChange={(event) => setMemoryDraft(event.target.value)}
-              placeholder="Short note Kin should remember..."
-            />
-          </label>
-          <div className="button-row">
-            <button className="primary-button primary-button--auto" type="button" onClick={saveReviewedMemory}>
-              <Save size={16} />
-              Save memory
-            </button>
-            <button className="ghost-button" type="button" onClick={cancelMemoryReview}>
-              <X size={16} />
-              Cancel
-            </button>
-          </div>
-          <small>Saved only in this browser/device. You can export or delete it from Privacy.</small>
-        </section>
-      )}
-
       <div className="chat-window" aria-live="polite">
         {visibleMessages.map((message, index) => (
           <article className={`message ${message.role}`} key={`${message.role}-${index}`}>
@@ -349,7 +274,7 @@ export function AiCoachChat({
               <Brain size={18} />
             </div>
             <div className="message-body">
-              <p>Kin is checking boundaries and choosing a safe next step...</p>
+              <p>{apiNotice || "Kin is checking boundaries and choosing a safe next step..."}</p>
             </div>
           </article>
         )}
@@ -375,19 +300,7 @@ export function AiCoachChat({
       </form>
 
       <div className="coach-footer">
-        {isPhone && (
-          <button
-            className="secondary-button secondary-button--auto"
-            type="button"
-            onClick={startMemoryReview}
-            disabled={!canSaveChatMemory}
-            title={canSaveChatMemory ? "Save a local summary of this chat." : "Chat with Kin first, then save a memory."}
-          >
-            <Save size={16} />
-            Save chat
-          </button>
-        )}
-        <button className="ghost-button ghost-button--inline" type="button" onClick={() => setMessages(starterMessages)}>
+        <button className="ghost-button ghost-button--inline" type="button" onClick={resetChat}>
           <RotateCcw size={16} />
           Reset chat
         </button>
@@ -396,39 +309,8 @@ export function AiCoachChat({
   );
 }
 
-function useMediaQuery(query) {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia(query).matches : false,
-  );
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    function handleChange() {
-      setMatches(media.matches);
-    }
-    handleChange();
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
-  }, [query]);
-
-  return matches;
-}
-
-async function fetchServerCoachReply(payload) {
-  const response = await fetch(buildKinApiUrl("/api/chat"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Kin could not respond.");
-  return data;
-}
-
-function formatMemoryTimestamp(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not updated yet";
-  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+async function fetchServerCoachReply(payload, { onStatus } = {}) {
+  return postKinApiJson("/api/chat", payload, { onStatus });
 }
 
 function friendlyModuleName(moduleId) {

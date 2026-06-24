@@ -8,11 +8,11 @@ import {
 } from "../src/features/aiModels/modelPolicy.js";
 
 test("model policy defaults route Kin roles to the requested OpenRouter models", () => {
-  assert.equal(getOpenRouterModelForRole(aiModelRoles.normalCoach), "google/gemini-3.1-flash-lite");
+  assert.equal(getOpenRouterModelForRole(aiModelRoles.normalCoach), "anthropic/claude-haiku-4.5");
   assert.equal(getOpenRouterModelForRole(aiModelRoles.safetyBackup), "google/gemini-3.1-flash-lite");
   assert.equal(getOpenRouterModelForRole(aiModelRoles.adhdTask), "google/gemini-3.1-flash-lite");
   assert.equal(getOpenRouterModelForRole(aiModelRoles.goal), "google/gemini-3.1-flash-lite");
-  assert.equal(getOpenRouterModelForRole(aiModelRoles.deepSupport), "openai/gpt-5.4-mini");
+  assert.equal(getOpenRouterModelForRole(aiModelRoles.deepSupport), "anthropic/claude-sonnet-4.5");
   assert.equal(openRouterModelDefaults.deepSupportFallback, "anthropic/claude-haiku-4.5");
   assert.equal(getOpenRouterModelForRole(aiModelRoles.summary), "google/gemini-3.1-flash-lite");
   assert.equal(getOpenRouterModelForRole(aiModelRoles.insight), "google/gemini-3.1-flash-lite");

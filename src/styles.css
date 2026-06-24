@@ -2162,7 +2162,12 @@ button:disabled {
   color: var(--muted);
   font-size: 13px;
   font-weight: 850;
+  font-family: inherit;
   white-space: nowrap;
+}
+
+button.api-status {
+  cursor: pointer;
 }
 
 .api-status--openrouter,

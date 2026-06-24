@@ -139,10 +139,10 @@ In Render:
    - Health check path: `/api/health`
    - `KIN_SERVER_HOST=0.0.0.0`
    - `KIN_ALLOWED_ORIGINS=https://captainnoah352.github.io`
-   - `OPENROUTER_MODEL=google/gemini-3.1-flash-lite`
+   - `OPENROUTER_MODEL=anthropic/claude-haiku-4.5`
    - `OPENROUTER_TASK_MODEL=google/gemini-3.1-flash-lite`
    - `OPENROUTER_SAFETY_BACKUP_MODEL=google/gemini-3.1-flash-lite`
-   - `OPENROUTER_DEEP_SUPPORT_MODEL=openai/gpt-5.4-mini`
+   - `OPENROUTER_DEEP_SUPPORT_MODEL=anthropic/claude-sonnet-4.5`
    - `OPENROUTER_GOAL_MODEL=google/gemini-3.1-flash-lite`
    - `OPENROUTER_SUMMARY_MODEL=google/gemini-3.1-flash-lite`
    - `OPENROUTER_INSIGHT_MODEL=google/gemini-3.1-flash-lite`
@@ -156,6 +156,8 @@ https://kin-api.onrender.com
 ```
 
 Then rerun the Pages workflow. The static app should stop calling `https://captainnoah352.github.io/kin-ai-companion/api/health` and call the Render origin instead.
+
+Render free services can sleep after idle time. Kin waits and retries while the API wakes up, but the first AI response after inactivity may take longer than normal.
 
 ### Sync Between Phone and PC
 
@@ -195,10 +197,10 @@ To connect a real model through OpenRouter, copy `.env.example` to `.env` and se
 
 ```text
 OPENROUTER_API_KEY=your_key_here
-OPENROUTER_MODEL=google/gemini-3.1-flash-lite
+OPENROUTER_MODEL=anthropic/claude-haiku-4.5
+OPENROUTER_DEEP_SUPPORT_MODEL=anthropic/claude-sonnet-4.5
 OPENROUTER_TASK_MODEL=google/gemini-3.1-flash-lite
 OPENROUTER_SAFETY_BACKUP_MODEL=google/gemini-3.1-flash-lite
-OPENROUTER_DEEP_SUPPORT_MODEL=openai/gpt-5.4-mini
 OPENROUTER_GOAL_MODEL=google/gemini-3.1-flash-lite
 OPENROUTER_SUMMARY_MODEL=google/gemini-3.1-flash-lite
 OPENROUTER_INSIGHT_MODEL=google/gemini-3.1-flash-lite
@@ -215,10 +217,10 @@ Default OpenRouter role routing:
 | Kin role | Default model |
 | --- | --- |
 | Safety classification backup | `google/gemini-3.1-flash-lite` |
-| Normal AI coach | `google/gemini-3.1-flash-lite` |
+| Normal AI coach | `anthropic/claude-haiku-4.5` |
 | ADHD task support | `google/gemini-3.1-flash-lite` |
 | Goal tracking / reminders | `google/gemini-3.1-flash-lite` |
-| Deep emotional support | `openai/gpt-5.4-mini` with `anthropic/claude-haiku-4.5` as fallback |
+| Deep emotional support | `anthropic/claude-sonnet-4.5` with `anthropic/claude-haiku-4.5` as fallback |
 | Crisis handling | Safety Router, not normal chat |
 | Weekly summaries | `google/gemini-3.1-flash-lite` |
 | App naming, journaling, insight summaries | `google/gemini-3.1-flash-lite` |

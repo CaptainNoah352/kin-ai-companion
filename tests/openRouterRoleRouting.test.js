@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { chatReply, classifySafetyWithBackup } from "../server.mjs";
 
-test("normal server chat defaults to Gemini Flash-Lite", async () => {
+test("normal server chat defaults to Claude Haiku", async () => {
   const env = snapshotEnv();
   const previousFetch = globalThis.fetch;
   const requests = [];
@@ -20,20 +20,20 @@ test("normal server chat defaults to Gemini Flash-Lite", async () => {
 
   try {
     const reply = await chatReply({
-      messages: [{ role: "user", content: "Can you help me pick a tiny next step?" }],
+      messages: [{ role: "user", content: "Hello, I want to talk for a minute." }],
       region: "US",
     });
 
     assert.match(reply.content, /small next step/i);
     assert.equal(requests[0].model, "google/gemini-3.1-flash-lite");
-    assert.equal(requests[1].model, "google/gemini-3.1-flash-lite");
+    assert.equal(requests[1].model, "anthropic/claude-haiku-4.5");
   } finally {
     restoreEnv(env);
     globalThis.fetch = previousFetch;
   }
 });
 
-test("deep emotional support uses GPT-5.4 mini after non-crisis safety checks", async () => {
+test("deep emotional support uses Claude Sonnet after non-crisis safety checks", async () => {
   const env = snapshotEnv();
   const previousFetch = globalThis.fetch;
   const requests = [];
@@ -57,7 +57,7 @@ test("deep emotional support uses GPT-5.4 mini after non-crisis safety checks", 
     });
 
     assert.equal(requests[0].model, "google/gemini-3.1-flash-lite");
-    assert.equal(requests[1].model, "openai/gpt-5.4-mini");
+    assert.equal(requests[1].model, "anthropic/claude-sonnet-4.5");
   } finally {
     restoreEnv(env);
     globalThis.fetch = previousFetch;

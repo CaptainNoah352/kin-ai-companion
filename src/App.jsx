@@ -24,7 +24,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
-import { buildKinApiUrl, isGithubPagesRuntime, isKinApiBaseUrlStaticHost, shouldUseKinApiBackend } from "./lib/runtimeMode.js";
+import { fetchKinApiHealth, waitForKinApi } from "./lib/kinApiClient.js";
+import { isGithubPagesRuntime, isKinApiBaseUrlStaticHost, shouldUseKinApiBackend } from "./lib/runtimeMode.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
 import { AdhdTasksCenter } from "./features/adhdTasks/AdhdTasksCenter.jsx";
@@ -43,7 +44,7 @@ import { InterventionRunner } from "./features/interventions/InterventionRunner.
 import { getInterventionById } from "./features/interventions/interventionService.js";
 import { JournalCenter } from "./features/journal/JournalCenter.jsx";
 import { MemoryCenter } from "./features/memory/MemoryCenter.jsx";
-import { addMemorySummary, createDefaultMemory } from "./features/memory/memoryService.js";
+import { addMemorySummary, createDefaultMemory, setAutoChatSummary } from "./features/memory/memoryService.js";
 import {
   createAppLock,
   createDefaultAppLock,
@@ -178,6 +179,7 @@ export default function App() {
   const [selectedModuleId, setSelectedModuleId] = useState("grounding-54321");
   const [safetySignal, setSafetySignal] = useState(null);
   const [apiMode, setApiMode] = useState("checking");
+  const [apiStatusNotice, setApiStatusNotice] = useState("");
   const [consent, setConsent] = useStoredState(storageKeys.consent, defaultConsent);
   const [profile, setProfile] = useStoredState(storageKeys.profile, defaultProfile);
   const legacyMessages = readStorage(storageKeys.messages, []);
@@ -328,27 +330,53 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
+  const refreshApiStatus = useCallback(async ({ wake = false } = {}) => {
     if (isGithubPagesRuntime() && isKinApiBaseUrlStaticHost()) {
       setApiMode("api-misconfigured");
-      return;
+      setApiStatusNotice("");
+      return null;
     }
     if (!shouldUseKinApiBackend()) {
       setApiMode(userOpenRouter.apiKey ? "openrouter-user" : "demo");
-      return;
+      setApiStatusNotice("");
+      return null;
     }
-    fetch(buildKinApiUrl("/api/health"))
-      .then((response) => {
-        if (!response.ok) {
-          const error = new Error(`Health check returned HTTP ${response.status}.`);
-          error.status = response.status;
-          throw error;
-        }
-        return response.json();
-      })
-      .then((data) => setApiMode(data.ai || "demo"))
-      .catch((error) => setApiMode(error.status === 404 ? "api-404" : "offline"));
+
+    setApiMode("checking");
+    try {
+      const data = wake
+        ? await waitForKinApi({ onStatus: setApiStatusNotice })
+        : await fetchKinApiHealth();
+      setApiMode(data?.ai || "demo");
+      setApiStatusNotice("");
+      return data;
+    } catch (error) {
+      setApiMode(error.status === 404 ? "api-404" : "offline");
+      setApiStatusNotice("");
+      return null;
+    }
   }, [userOpenRouter.apiKey]);
+
+  useEffect(() => {
+    void refreshApiStatus();
+  }, [refreshApiStatus]);
+
+  useEffect(() => {
+    function refreshWhenAvailable() {
+      if (document.visibilityState === "visible") void refreshApiStatus();
+    }
+
+    function refreshWhenOnline() {
+      void refreshApiStatus({ wake: true });
+    }
+
+    document.addEventListener("visibilitychange", refreshWhenAvailable);
+    window.addEventListener("online", refreshWhenOnline);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshWhenAvailable);
+      window.removeEventListener("online", refreshWhenOnline);
+    };
+  }, [refreshApiStatus]);
 
   useEffect(() => {
     function handleBeforeInstallPrompt(event) {
@@ -693,6 +721,10 @@ export default function App() {
       setAuditEvents((events) => appendAuditEvent(events, "memory_summary_saved"));
     }
     return saved;
+  }
+
+  function autoSaveChatMemory(text) {
+    setMemory((current) => setAutoChatSummary(current, text));
   }
 
   const handleGoogleSignIn = useCallback((profile) => {
@@ -1515,6 +1547,7 @@ export default function App() {
         onOpenModule={openModule}
         onOpenMemory={() => selectTab("Memory")}
         onSaveMemorySummary={saveMemorySummary}
+        onAutoSaveMemory={autoSaveChatMemory}
         userOpenRouter={userOpenRouter}
         chatMode={chatMode}
         onChatModeChange={setChatMode}
@@ -1672,7 +1705,7 @@ export default function App() {
           </div>
           <div className="phone-header-actions">
             <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} compact />
-            <ApiStatusBadge mode={apiMode} />
+            <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
             <button
               className={phoneMoreOpen ? "phone-wellness-button active" : "phone-wellness-button"}
               type="button"
@@ -1799,7 +1832,10 @@ export default function App() {
           <Sparkles size={18} />
           <div>
             <strong>{apiStatusLabel(apiMode)}</strong>
-            <p>{apiStatusCopy(apiMode)}</p>
+            <p>{apiStatusNotice || apiStatusCopy(apiMode)}</p>
+            <button className="ghost-button ghost-button--inline" type="button" onClick={() => refreshApiStatus({ wake: true })}>
+              Reconnect AI
+            </button>
           </div>
         </section>
       </aside>
@@ -1815,7 +1851,7 @@ export default function App() {
               <Plus size={16} />
               Start
             </button>
-            <ApiStatusBadge mode={apiMode} />
+            <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
             <SOSButton compact onClick={() => selectTab("Safety")} />
           </div>
         </header>
@@ -2125,7 +2161,15 @@ function RotateHomeIcon(props) {
   return <Wrench {...props} />;
 }
 
-function ApiStatusBadge({ mode }) {
+function ApiStatusBadge({ mode, onReconnect }) {
+  if (onReconnect) {
+    return (
+      <button className={`api-status api-status--${mode}`} type="button" onClick={onReconnect} title="Reconnect AI">
+        {apiStatusLabel(mode)}
+      </button>
+    );
+  }
+
   return <span className={`api-status api-status--${mode}`}>{apiStatusLabel(mode)}</span>;
 }
 
@@ -2194,7 +2238,7 @@ function apiStatusCopy(mode) {
     offline: "API is offline; local fallback may be limited.",
     "api-404": "Configured API URL returned 404. Check VITE_KIN_API_BASE_URL and deploy the Kin API server.",
     "api-misconfigured": "VITE_KIN_API_BASE_URL points at the static app, not a deployed Kin API server.",
-    checking: "Checking local API status.",
+    checking: "Checking AI server status.",
   };
   return copy[mode] || copy.demo;
 }
