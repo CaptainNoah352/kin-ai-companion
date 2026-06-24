@@ -1,5 +1,9 @@
 import react from "@vitejs/plugin-react";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+
+const projectRoot = realpathSync(fileURLToPath(new URL(".", import.meta.url)));
 
 function getAllowedHosts() {
   const configured = process.env.KIN_ALLOWED_HOSTS || "";
@@ -12,6 +16,7 @@ function getAllowedHosts() {
 }
 
 export default defineConfig({
+  root: projectRoot,
   plugins: [react()],
   server: {
     port: 988,

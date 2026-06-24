@@ -67,6 +67,7 @@ test("data map keeps model training off for sensitive categories", () => {
       "messages",
       "wellnessMessages",
       "adhdMessages",
+      "adhdTasks",
       "goals",
       "startSessions",
       "weeklyReviews",
@@ -77,7 +78,7 @@ test("data map keeps model training off for sensitive categories", () => {
       "trustedVaultUnlock",
     ].includes(category.key),
   );
-  assert.ok(sensitive.length >= 12);
+  assert.ok(sensitive.length >= 13);
   for (const category of sensitive) {
     assert.equal(category.usedForModelTraining, false);
   }
@@ -94,6 +95,7 @@ test("mental health deletion clears local content including memory", () => {
   writeStorage(storageKeys.messages, [{ role: "user", content: "hello" }]);
   writeStorage(storageKeys.wellnessMessages, [{ role: "user", content: "wellness hello" }]);
   writeStorage(storageKeys.adhdMessages, [{ role: "user", content: "adhd hello" }]);
+  writeStorage(storageKeys.adhdTasks, { tasks: { private: { title: "private task list" } } });
   writeStorage(storageKeys.goals, [{ title: "private goal" }]);
   writeStorage(storageKeys.startSessions, [{ task: "private task" }]);
   writeStorage(storageKeys.weeklyReviews, [{ wins: "private review" }]);
@@ -110,6 +112,7 @@ test("mental health deletion clears local content including memory", () => {
   assert.equal(readStorage(storageKeys.messages, null), null);
   assert.equal(readStorage(storageKeys.wellnessMessages, null), null);
   assert.equal(readStorage(storageKeys.adhdMessages, null), null);
+  assert.equal(readStorage(storageKeys.adhdTasks, null), null);
   assert.equal(readStorage(storageKeys.goals, null), null);
   assert.equal(readStorage(storageKeys.startSessions, null), null);
   assert.equal(readStorage(storageKeys.weeklyReviews, null), null);

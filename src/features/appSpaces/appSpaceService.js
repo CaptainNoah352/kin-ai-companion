@@ -34,6 +34,7 @@ export function buildAppBridgeContext({
   activeAppSpace = appSpaceIds.wellness,
   wellnessMessages = [],
   adhdMessages = [],
+  adhdTasks,
   goals = [],
   startSessions = [],
   weeklyReviews = [],
@@ -47,6 +48,7 @@ export function buildAppBridgeContext({
 
   const activeGoals = asArray(goals).filter((goal) => goal?.status !== "done").slice(0, 3);
   const missedGoals = asArray(goals).filter((goal) => Number(goal?.missedCount || 0) > 0).slice(0, 3);
+  const taskSummary = summarizeTaskState(adhdTasks);
   const recentStart = asArray(startSessions).slice(0, 3).map((session) => ({
     task: summarizeText(session?.task || ""),
     status: session?.status || "",
@@ -77,10 +79,29 @@ export function buildAppBridgeContext({
         nextStep: summarizeText(goal?.nextStep || ""),
         missedCount: Number(goal?.missedCount || 0),
       })),
+      adhdTasks: taskSummary,
       recentStart,
       latestReviewFocus: summarizeText(latestReview?.nextWeekFocus || latestReview?.friction || ""),
       memorySummaryCount: Array.isArray(memory?.summaries) ? memory.summaries.length : 0,
     },
+  };
+}
+
+function summarizeTaskState(state) {
+  if (!state || typeof state !== "object") return { open: 0, completed: 0, recentOpenTasks: [] };
+  const tasks = Object.values(state.tasks || {});
+  const topLevel = tasks.filter((task) => !task?.parentId);
+  return {
+    open: tasks.filter((task) => !task?.completed).length,
+    completed: tasks.filter((task) => task?.completed).length,
+    recentOpenTasks: topLevel
+      .filter((task) => !task?.completed)
+      .slice(0, 3)
+      .map((task) => ({
+        title: summarizeText(task?.title || ""),
+        category: task?.category || "",
+        priority: task?.priority || "",
+      })),
   };
 }
 

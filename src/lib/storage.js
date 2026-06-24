@@ -22,6 +22,7 @@ export const storageKeys = {
   appSpaceTabs: "appSpaceTabs",
   wellnessMessages: "wellnessMessages",
   adhdMessages: "adhdMessages",
+  adhdTasks: "adhdTasks",
   googleSession: "googleSession",
   driveSync: "driveSync",
   encryptedVault: "encryptedVault",

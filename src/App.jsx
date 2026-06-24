@@ -4,6 +4,7 @@ import {
   BookOpen,
   Brain,
   CheckCircle2,
+  FileCheck2,
   Home,
   Leaf,
   LifeBuoy,
@@ -25,6 +26,8 @@ import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
+import { AdhdTasksCenter } from "./features/adhdTasks/AdhdTasksCenter.jsx";
+import { createDefaultAdhdTasks } from "./features/adhdTasks/adhdTaskService.js";
 import {
   appSpaceIds,
   appSpaceMeta,
@@ -102,6 +105,7 @@ const wellnessNavItems = [
 const adhdNavItems = [
   { id: "Home", label: "Home", icon: Home },
   { id: "Chat", label: "Coach", icon: Brain },
+  { id: "Tasks", label: "Tasks", icon: FileCheck2 },
   { id: "Goals", label: "Goals", icon: CheckCircle2 },
   { id: "Start", label: "Start", icon: Plus },
   { id: "Review", label: "Review", icon: BarChart3 },
@@ -170,6 +174,7 @@ export default function App() {
   const legacyMessages = readStorage(storageKeys.messages, []);
   const [wellnessMessages, setWellnessMessages] = useStoredState(storageKeys.wellnessMessages, legacyMessages);
   const [adhdMessages, setAdhdMessages] = useStoredState(storageKeys.adhdMessages, []);
+  const [adhdTasks, setAdhdTasks] = useStoredState(storageKeys.adhdTasks, createDefaultAdhdTasks());
   const [goals, setGoals] = useStoredState(storageKeys.goals, []);
   const [startSessions, setStartSessions] = useStoredState(storageKeys.startSessions, []);
   const [weeklyReviews, setWeeklyReviews] = useStoredState(storageKeys.weeklyReviews, []);
@@ -226,13 +231,14 @@ export default function App() {
         activeAppSpace: normalizedAppSpace,
         wellnessMessages,
         adhdMessages,
+        adhdTasks,
         goals,
         startSessions,
         weeklyReviews,
         checkIns,
         memory,
       }),
-    [normalizedAppSpace, wellnessMessages, adhdMessages, goals, startSessions, weeklyReviews, checkIns, memory],
+    [normalizedAppSpace, wellnessMessages, adhdMessages, adhdTasks, goals, startSessions, weeklyReviews, checkIns, memory],
   );
 
   useEffect(() => {
@@ -379,6 +385,7 @@ export default function App() {
     appSpaceTabs,
     wellnessMessages,
     adhdMessages,
+    adhdTasks,
     goals,
     startSessions,
     weeklyReviews,
@@ -552,6 +559,10 @@ export default function App() {
     openTabInAppSpace(appSpaceIds.adhd, "Goals");
   }
 
+  function openTasks() {
+    openTabInAppSpace(appSpaceIds.adhd, "Tasks");
+  }
+
   function openReview() {
     openTabInAppSpace(appSpaceIds.adhd, "Review");
   }
@@ -618,6 +629,7 @@ export default function App() {
       appSpaceTabs: createDefaultAppSpaceTabs(appSpaceTabs),
       wellnessMessages,
       adhdMessages,
+      adhdTasks,
       goals,
       startSessions,
       weeklyReviews,
@@ -675,6 +687,7 @@ export default function App() {
     setAppSpaceTabs(createDefaultAppSpaceTabs(kinData.appSpaceTabs));
     setWellnessMessages(kinData.wellnessMessages ?? kinData.messages ?? []);
     setAdhdMessages(kinData.adhdMessages ?? []);
+    setAdhdTasks(createDefaultAdhdTasks(kinData.adhdTasks));
     setGoals(kinData.goals ?? []);
     setStartSessions(kinData.startSessions ?? []);
     setWeeklyReviews(kinData.weeklyReviews ?? []);
@@ -1192,6 +1205,7 @@ export default function App() {
     deleteMentalHealthContent();
     setWellnessMessages([]);
     setAdhdMessages([]);
+    setAdhdTasks(createDefaultAdhdTasks());
     setAppSpaceTabs(createDefaultAppSpaceTabs());
     setGoals([]);
     setStartSessions([]);
@@ -1224,6 +1238,7 @@ export default function App() {
     setActiveTab("Home");
     setWellnessMessages([]);
     setAdhdMessages([]);
+    setAdhdTasks(createDefaultAdhdTasks());
     setAppSpaceTabs(createDefaultAppSpaceTabs());
     setGoals([]);
     setStartSessions([]);
@@ -1390,6 +1405,7 @@ export default function App() {
         activeAppSpace={normalizedAppSpace}
         onStartCheckIn={() => selectTab("Check In")}
         onOpenChatMode={openChatMode}
+        onOpenTasks={openTasks}
         onOpenGoals={openGoals}
         onOpenStart={openStart}
         onOpenReview={openReview}
@@ -1427,6 +1443,16 @@ export default function App() {
       />
     ),
     Goals: <GoalsCenter goals={goals} setGoals={setGoals} onOpenChatMode={openChatMode} onOpenStart={openStart} />,
+    Tasks: (
+      <AdhdTasksCenter
+        taskState={adhdTasks}
+        setTaskState={setAdhdTasks}
+        setGoals={setGoals}
+        onOpenStart={openStart}
+        userOpenRouter={userOpenRouter}
+        apiMode={apiMode}
+      />
+    ),
     Start: (
       <StartCenter
         sessions={startSessions}
@@ -1438,6 +1464,7 @@ export default function App() {
     Review: (
       <WeeklyReview
         goals={goals}
+        adhdTasks={adhdTasks}
         checkIns={checkIns}
         startSessions={startSessions}
         weeklyReviews={weeklyReviews}
@@ -1775,6 +1802,7 @@ function HomeView({
   activeAppSpace = appSpaceIds.wellness,
   onStartCheckIn,
   onOpenChatMode,
+  onOpenTasks,
   onOpenGoals,
   onOpenStart,
   onOpenReview,
@@ -1842,11 +1870,11 @@ function HomeView({
           onClick={() => onOpenChatMode("Unblock")}
         />
         <HomeAction
-          icon={Plus}
-          title="Start a 5-minute task"
-          copy="Pick the smallest visible action and begin."
-          action="Start"
-          onClick={() => onOpenStart("")}
+          icon={isAdhd ? FileCheck2 : Plus}
+          title={isAdhd ? "Magic task list" : "Start a 5-minute task"}
+          copy={isAdhd ? "Break one task into visible tiny steps." : "Pick the smallest visible action and begin."}
+          action={isAdhd ? "Tasks" : "Start"}
+          onClick={isAdhd ? onOpenTasks : () => onOpenStart("")}
         />
         <HomeAction
           icon={CheckCircle2}

@@ -54,6 +54,17 @@ export const dataCategories = [
     usedForModelTraining: false,
   },
   {
+    key: "adhdTasks",
+    label: "ADHD task lists",
+    purpose: "Stores nested ADHD task lists, tiny steps, estimates, priority, categories, completion state, and local exports.",
+    required: false,
+    retentionDays: 365,
+    userCanDelete: true,
+    usedForAiPersonalization: true,
+    usedForAnalytics: false,
+    usedForModelTraining: false,
+  },
+  {
     key: "goals",
     label: "Goals and tiny steps",
     purpose: "Stores active goals, next steps, missed-goal recovery notes, and completed goal history.",

@@ -9,6 +9,7 @@ export function deleteMentalHealthContent() {
     storageKeys.messages,
     storageKeys.wellnessMessages,
     storageKeys.adhdMessages,
+    storageKeys.adhdTasks,
     storageKeys.goals,
     storageKeys.startSessions,
     storageKeys.weeklyReviews,

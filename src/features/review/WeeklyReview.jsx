@@ -2,6 +2,7 @@ import { BarChart3, CheckCircle2, MessageCircle, RotateCcw } from "lucide-react"
 import { useMemo, useState } from "react";
 import { goalStats } from "../goals/goalService.js";
 import { summarizeStartSessions } from "../start/startSessionService.js";
+import { summarizeAdhdTasks } from "../adhdTasks/adhdTaskService.js";
 
 const emptyDraft = {
   wins: "",
@@ -12,6 +13,7 @@ const emptyDraft = {
 
 export function WeeklyReview({
   goals,
+  adhdTasks,
   checkIns,
   startSessions,
   weeklyReviews,
@@ -23,6 +25,7 @@ export function WeeklyReview({
   const safeReviews = Array.isArray(weeklyReviews) ? weeklyReviews : [];
   const goalSummary = useMemo(() => goalStats(goals), [goals]);
   const startSummary = useMemo(() => summarizeStartSessions(startSessions), [startSessions]);
+  const taskSummary = useMemo(() => summarizeAdhdTasks(adhdTasks), [adhdTasks]);
   const checkInsThisWeek = useMemo(() => countItemsThisWeek(checkIns, "createdAt"), [checkIns]);
   const recentReviews = safeReviews.slice(0, 4);
 
@@ -51,6 +54,7 @@ export function WeeklyReview({
         <SummaryCard icon={CheckCircle2} label="Goals done" value={goalSummary.completedCount} />
         <SummaryCard icon={RotateCcw} label="Goal recoveries" value={goalSummary.recoveryCount} />
         <SummaryCard icon={BarChart3} label="Check-ins" value={checkInsThisWeek} />
+        <SummaryCard icon={CheckCircle2} label="Tasks open" value={taskSummary.open} />
         <SummaryCard icon={CheckCircle2} label="Start sessions" value={startSummary.total} />
       </div>
 

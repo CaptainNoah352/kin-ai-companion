@@ -15,6 +15,7 @@ test("vault payload excludes local-only sync and encrypted vault metadata", () =
       [storageKeys.messages]: [{ role: "user", content: "hello" }],
       [storageKeys.wellnessMessages]: [{ role: "user", content: "wellness hello" }],
       [storageKeys.adhdMessages]: [{ role: "user", content: "adhd hello" }],
+      [storageKeys.adhdTasks]: { tasks: { task1: { title: "private task" } } },
       [storageKeys.encryptedVault]: { ciphertext: "old encrypted blob" },
       [storageKeys.googleSession]: { email: "friend@example.com" },
       [storageKeys.driveSync]: { fileId: "drive-file-id" },
@@ -29,6 +30,7 @@ test("vault payload excludes local-only sync and encrypted vault metadata", () =
   assert.deepEqual(payload.kinData.messages, [{ role: "user", content: "hello" }]);
   assert.deepEqual(payload.kinData.wellnessMessages, [{ role: "user", content: "wellness hello" }]);
   assert.deepEqual(payload.kinData.adhdMessages, [{ role: "user", content: "adhd hello" }]);
+  assert.deepEqual(payload.kinData.adhdTasks, { tasks: { task1: { title: "private task" } } });
   assert.equal(payload.kinData.encryptedVault, undefined);
   assert.equal(payload.kinData.googleSession, undefined);
   assert.equal(payload.kinData.driveSync, undefined);

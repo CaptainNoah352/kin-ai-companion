@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { pbkdf2, timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -10,6 +10,8 @@ import { AI_COACH_SYSTEM_PROMPT } from "./src/features/aiCoach/aiCoachPrompts.js
 import { classifyCoachBoundary, createCoachReply, recommendModules } from "./src/features/aiCoach/aiCoachService.js";
 import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "./src/features/safety/safetyRouter.js";
 import { buildAppSpacePromptContext } from "./src/features/appSpaces/appSpaceService.js";
+import { normalizeBreakdownResponse, normalizeSpiciness } from "./src/features/adhdTasks/adhdTaskService.js";
+import { buildTaskBreakdownMessages } from "./src/features/adhdTasks/taskBreakdownClient.js";
 import { buildModeSuggestion, buildSupportModePromptContext } from "./src/features/supportModes/supportModeService.js";
 import { getRuntimeStatus, safetyRouterVersion } from "./runtimeStatus.mjs";
 
@@ -255,6 +257,30 @@ async function openRouterReply(promptParts, conversation) {
   );
 }
 
+async function openRouterTaskBreakdown({ task, spiciness }) {
+  const response = await fetch(openRouterApiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://127.0.0.1:988",
+      "X-OpenRouter-Title": process.env.OPENROUTER_APP_NAME || "Kin Mental Wellness Companion",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENROUTER_MODEL,
+      messages: buildTaskBreakdownMessages({ task, spiciness }),
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter task breakdown failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return normalizeBreakdownResponse(data.choices?.[0]?.message?.content || "", task);
+}
+
 async function openAiReply(promptParts, conversation) {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -280,6 +306,45 @@ async function openAiReply(promptParts, conversation) {
     data.output?.flatMap((item) => item.content || []).find((part) => part.text)?.text ||
     "I am here with you. Could you say that another way so I can follow you better?"
   );
+}
+
+async function openAiTaskBreakdown({ task, spiciness }) {
+  const messages = buildTaskBreakdownMessages({ task, spiciness });
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL,
+      instructions: messages[0].content,
+      input: messages[1].content,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI task breakdown failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text =
+    data.output_text ||
+    data.output?.flatMap((item) => item.content || []).find((part) => part.text)?.text ||
+    "";
+  return normalizeBreakdownResponse(text, task);
+}
+
+export async function taskBreakdown({ task, spiciness }) {
+  const provider = getAiProvider();
+  if (provider === "demo") {
+    const error = new Error("Task breakdown requires a real AI provider.");
+    error.statusCode = 409;
+    throw error;
+  }
+  return provider === "openrouter"
+    ? openRouterTaskBreakdown({ task, spiciness })
+    : openAiTaskBreakdown({ task, spiciness });
 }
 
 app.get("/api/health", (_req, res) => {
@@ -384,6 +449,25 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+app.post("/api/adhd/tasks/breakdown", async (req, res) => {
+  try {
+    const task = sanitizeText(req.body.task, 500);
+    const spiciness = normalizeSpiciness(req.body.spiciness);
+    if (!task) {
+      return res.status(400).json({ error: "A task is required." });
+    }
+
+    res.json(await taskBreakdown({ task, spiciness }));
+  } catch (error) {
+    console.error("Task breakdown failed:", error.message);
+    res.status(error.statusCode || 500).json({
+      error: error.statusCode === 409
+        ? "Task breakdown needs OpenRouter or OpenAI configured."
+        : "Task breakdown could not be created. Try again in a moment.",
+    });
+  }
+});
+
 if (serveStatic) {
   const staticDir = resolve(moduleDir, "dist");
   const indexPath = resolve(staticDir, "index.html");
@@ -417,7 +501,12 @@ export function startKinServer({ listenPort = port, host = serverHost } = {}) {
 }
 
 function isDirectRun() {
-  return process.argv[1] && resolve(process.argv[1]) === modulePath;
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(resolve(process.argv[1])) === realpathSync(modulePath);
+  } catch {
+    return resolve(process.argv[1]) === modulePath;
+  }
 }
 
 if (isDirectRun()) {
