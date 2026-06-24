@@ -30,6 +30,8 @@ const localOnlyExportKeys = new Set([
   storageKeys.googleSession,
   storageKeys.driveSync,
   storageKeys.pageScroll,
+  storageKeys.safetySignals,
+  storageKeys.safetyPlan,
 ]);
 
 export function createDefaultDriveSync(sync) {

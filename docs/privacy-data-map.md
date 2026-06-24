@@ -10,15 +10,13 @@ Kin is local-first by default. Browser/device state is stored under the `kin.v2.
 | Journal entries | Stores private reflections | Yes | Yes | No | No |
 | Personal memory | Stores user-editable context and saved summaries | Yes | Yes | No | No |
 | App lock | Stores local screen-lock settings and a passcode verifier | Yes | No | No | No |
-| Safety signals | Routes high-risk input without raw matched quotes | Yes | No | No | No |
-| Safety plan | Stores user-controlled support plan | Yes | No | No | No |
 | Google session | Stores account display metadata for this browser | Yes | No | No | No |
 | Drive sync metadata | Tracks encrypted vault file id, status, and sync times | Yes | No | No | No |
 | Encrypted vault | Stores encrypted synced Kin data in local storage and Google Drive app data | Yes | No | No | No |
 | Trusted-device vault unlock | Stores local encrypted unlock metadata for an opted-in trusted browser profile | Yes | No | No | No |
 | User OpenRouter settings | Optional user API key and model, encrypted inside the vault | Yes | Yes | No | No |
 
-Model training is off by default. This prototype does not silently send raw journal, check-in, or crisis text to analytics providers. Coach messages and enabled personalization context are sent to the configured AI provider only when the user sends a Coach message.
+Model training is off by default. This prototype does not silently send raw journal or check-in text to analytics providers. Coach messages and enabled personalization context are sent to the configured AI provider only when the user sends a Coach message.
 
 The app lock is a local screen lock for casual privacy. It stores only verifier metadata, not a plaintext passcode, but it is not full disk encryption.
 

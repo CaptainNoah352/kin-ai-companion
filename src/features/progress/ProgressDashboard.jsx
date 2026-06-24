@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { buildTrendSummary, filterCheckInsByDays, toPolylinePoints } from "./trendUtils.js";
 import { HandoffSummary } from "../handoff/HandoffSummary.jsx";
 
-export function ProgressDashboard({ checkIns, completedModules, carePlan, safetySignals }) {
+export function ProgressDashboard({ checkIns, completedModules, carePlan }) {
   const [days, setDays] = useState(7);
   const range = useMemo(() => filterCheckInsByDays(checkIns, days), [checkIns, days]);
   const summary = useMemo(() => buildTrendSummary(checkIns, days), [checkIns, days]);
@@ -81,12 +81,7 @@ export function ProgressDashboard({ checkIns, completedModules, carePlan, safety
         </div>
       </section>
 
-      <HandoffSummary
-        checkIns={checkIns}
-        completedModules={completedModules}
-        carePlan={carePlan}
-        safetySignals={safetySignals}
-      />
+      <HandoffSummary checkIns={checkIns} completedModules={completedModules} carePlan={carePlan} />
     </section>
   );
 }

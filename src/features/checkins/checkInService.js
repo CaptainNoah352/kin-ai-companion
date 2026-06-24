@@ -1,9 +1,7 @@
 import { recommendModules } from "../aiCoach/aiCoachService.js";
-import { classifySafety } from "../safety/safetyRouter.js";
 
 export function createCheckIn(input) {
   const note = String(input.note || "").trim();
-  const safetySignal = classifySafety(note || input.safeNowNote || "", { source: "check_in" });
 
   return {
     id: makeId("checkin"),
@@ -18,7 +16,6 @@ export function createCheckIn(input) {
     bodySensation: input.bodySensation || "",
     stressor: input.stressor || "",
     note,
-    safetyFlag: safetySignal.level,
     createdAt: new Date().toISOString(),
   };
 }
@@ -31,9 +28,6 @@ export function getCheckInRecommendation(checkIn) {
   if (!checkIn) return { moduleIds: ["grounding-54321"], reason: "A quick grounding exercise is a gentle place to start." };
 
   const moduleIds = recommendModules({ latestCheckIn: checkIn });
-  if (checkIn.safetyFlag && checkIn.safetyFlag !== "none" && checkIn.safetyFlag !== "low") {
-    return { moduleIds: ["safety-plan"], reason: "Your check-in suggests extra support may be useful." };
-  }
   if (checkIn.anxietyScore >= 7) return { moduleIds, reason: "Anxiety is elevated, so calming tools are prioritized." };
   if (checkIn.stressScore >= 7) return { moduleIds, reason: "Stress is elevated, so the next step should be small and structured." };
   if (checkIn.sleepQuality <= 4) return { moduleIds, reason: "Sleep looked difficult, so sleep support is prioritized." };

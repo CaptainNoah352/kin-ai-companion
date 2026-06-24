@@ -230,7 +230,6 @@ test("startup consent preserves privacy defaults with model training off", () =>
       allowPersonalization: true,
       allowAnalytics: false,
       allowModelTraining: false,
-      allowCrisisContactUse: false,
     },
     now: "2026-06-24T10:00:00.000Z",
   });

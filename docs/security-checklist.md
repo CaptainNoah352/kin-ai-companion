@@ -25,9 +25,8 @@ This checklist is for the friend/self-host release model. It hardens Kin for tru
 
 ## Safety and AI Boundaries
 
-- Every user chat message must pass through the Safety Router before normal AI.
 - Kin must not claim to diagnose, prescribe medication, replace therapy, or provide emergency/crisis services.
-- Safety phrases should open the safety flow and should not call normal AI chat.
+- The Support page provides static crisis and emergency resource references only.
 - OpenRouter mode must be visible in the UI as OpenRouter, Demo, or Offline.
 
 ## Release Tests

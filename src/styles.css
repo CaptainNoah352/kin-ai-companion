@@ -511,6 +511,12 @@ button:disabled {
   min-height: 180px;
 }
 
+.home-section-heading {
+  grid-column: span 6;
+  margin: 0;
+  font-size: 17px;
+}
+
 .home-action-grid {
   grid-column: span 6;
   display: grid;

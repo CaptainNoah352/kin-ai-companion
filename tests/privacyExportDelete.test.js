@@ -73,12 +73,11 @@ test("data map keeps model training off for sensitive categories", () => {
       "weeklyReviews",
       "journal",
       "memory",
-      "safetySignals",
       "appLock",
       "trustedVaultUnlock",
     ].includes(category.key),
   );
-  assert.ok(sensitive.length >= 13);
+  assert.ok(sensitive.length >= 12);
   for (const category of sensitive) {
     assert.equal(category.usedForModelTraining, false);
   }

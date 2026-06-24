@@ -4,7 +4,6 @@ import {
   buildRuntimeStatus,
   parseNetstatListeningAddresses,
   parseTailscaleStatusJson,
-  safetyRouterVersion,
 } from "../runtimeStatus.mjs";
 
 test("parses Tailscale Running state with a 100.x URL", () => {
@@ -56,7 +55,7 @@ test("runtime status never includes API keys or env values", () => {
   process.env.OPENROUTER_API_KEY = "sk-or-v1-runtime-status-should-not-leak";
 
   const status = buildRuntimeStatus({
-    api: { ok: true, ai: "openrouter", safetyRouter: safetyRouterVersion },
+    api: { ok: true, ai: "openrouter" },
     appPort: 988,
     lanIp: "192.168.1.216",
     listeningAddresses: ["0.0.0.0"],
@@ -101,7 +100,6 @@ test("runtime status can expose non-secret model role diagnostics", () => {
     api: {
       ok: true,
       ai: "openrouter",
-      safetyRouter: safetyRouterVersion,
       modelRoles: {
         normalCoach: "anthropic/claude-haiku-4.5",
         deepSupport: "anthropic/claude-sonnet-4.5",

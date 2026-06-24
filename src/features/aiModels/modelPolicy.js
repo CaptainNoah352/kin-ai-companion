@@ -1,6 +1,5 @@
 export const aiModelRoles = Object.freeze({
   normalCoach: "normalCoach",
-  safetyBackup: "safetyBackup",
   adhdTask: "adhdTask",
   goal: "goal",
   deepSupport: "deepSupport",
@@ -10,7 +9,6 @@ export const aiModelRoles = Object.freeze({
 
 export const openRouterModelDefaults = Object.freeze({
   [aiModelRoles.normalCoach]: "anthropic/claude-haiku-4.5",
-  [aiModelRoles.safetyBackup]: "google/gemini-3.1-flash-lite",
   [aiModelRoles.adhdTask]: "google/gemini-3.1-flash-lite",
   [aiModelRoles.goal]: "google/gemini-3.1-flash-lite",
   [aiModelRoles.deepSupport]: "anthropic/claude-sonnet-4.5",
@@ -21,7 +19,6 @@ export const openRouterModelDefaults = Object.freeze({
 
 export const openRouterModelEnvKeys = Object.freeze({
   [aiModelRoles.normalCoach]: "OPENROUTER_MODEL",
-  [aiModelRoles.safetyBackup]: "OPENROUTER_SAFETY_BACKUP_MODEL",
   [aiModelRoles.adhdTask]: "OPENROUTER_TASK_MODEL",
   [aiModelRoles.goal]: "OPENROUTER_GOAL_MODEL",
   [aiModelRoles.deepSupport]: "OPENROUTER_DEEP_SUPPORT_MODEL",
@@ -38,7 +35,6 @@ export function getOpenRouterModelForRole(role, env = {}) {
 export function buildOpenRouterModelDiagnostics(env = {}) {
   return {
     normalCoach: getOpenRouterModelForRole(aiModelRoles.normalCoach, env),
-    safetyBackup: getOpenRouterModelForRole(aiModelRoles.safetyBackup, env),
     adhdTask: getOpenRouterModelForRole(aiModelRoles.adhdTask, env),
     goal: getOpenRouterModelForRole(aiModelRoles.goal, env),
     deepSupport: getOpenRouterModelForRole(aiModelRoles.deepSupport, env),

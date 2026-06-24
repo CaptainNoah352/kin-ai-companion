@@ -75,7 +75,6 @@ export function createStartupDraft({ profile = {}, consent = {} } = {}) {
     allowPersonalization: consent.allowPersonalization !== false,
     allowAnalytics: Boolean(consent.allowAnalytics),
     allowModelTraining: Boolean(consent.allowModelTraining),
-    allowCrisisContactUse: Boolean(consent.allowCrisisContactUse),
     accessibilityPreferences: {
       reduceMotion: Boolean(profile.accessibilityPreferences?.reduceMotion),
       largeText: Boolean(profile.accessibilityPreferences?.largeText),
@@ -164,7 +163,6 @@ export function buildStartupConsent({ draft, existingConsent = {}, now = new Dat
     allowPersonalization: Boolean(draft.allowPersonalization),
     allowAnalytics: Boolean(draft.allowAnalytics),
     allowModelTraining: Boolean(draft.allowModelTraining),
-    allowCrisisContactUse: Boolean(draft.allowCrisisContactUse),
     createdAt: existingConsent.createdAt || now,
     updatedAt: now,
   };

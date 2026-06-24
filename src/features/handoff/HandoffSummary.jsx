@@ -2,11 +2,11 @@ import { Copy, FileText, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { generateHandoffSummary } from "./summaryGenerator.js";
 
-export function HandoffSummary({ checkIns, completedModules, carePlan, safetySignals }) {
+export function HandoffSummary({ checkIns, completedModules, carePlan }) {
   const [days, setDays] = useState(7);
   const summary = useMemo(
-    () => generateHandoffSummary({ checkIns, completedModules, carePlan, safetySignals }, days),
-    [checkIns, completedModules, carePlan, safetySignals, days],
+    () => generateHandoffSummary({ checkIns, completedModules, carePlan }, days),
+    [checkIns, completedModules, carePlan, days],
   );
 
   function copySummary() {
@@ -25,9 +25,6 @@ export function HandoffSummary({ checkIns, completedModules, carePlan, safetySig
       "",
       "Current stressors:",
       ...summary.currentStressors.map((line) => `- ${line}`),
-      "",
-      "Safety concerns:",
-      ...summary.safetyConcerns.map((line) => `- ${line}`),
       "",
       summary.userNotes,
     ].join("\n");

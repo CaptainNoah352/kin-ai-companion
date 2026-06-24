@@ -1,4 +1,4 @@
-import { defaultAppPort, getRuntimeStatus, safetyRouterVersion } from "../runtimeStatus.mjs";
+import { defaultAppPort, getRuntimeStatus } from "../runtimeStatus.mjs";
 
 const apiPort = Number(process.env.PORT || 8787);
 const appPort = Number(process.env.KIN_APP_PORT || defaultAppPort);
@@ -44,7 +44,6 @@ function printRuntimeStatus(status, appProbe, healthProbe) {
   console.log("Kin Remote Access Check");
   console.log("");
   console.log(`API health     ${statusWord(healthProbe.ok)} ${healthProbe.ok ? status.api.ai : healthProbe.error}`);
-  console.log(`Safety router  ${status.api.safetyRouter || safetyRouterVersion}`);
   console.log(`App HTTP       ${statusWord(appProbe.ok)} ${appProbe.ok ? `HTTP ${appProbe.status}` : appProbe.error}`);
   console.log(`App binding    ${status.app.listeningOnAllInterfaces ? "0.0.0.0/[::] on port 988" : "not listening on all interfaces"}`);
   console.log(`Listen addrs   ${status.app.listeningAddresses.length ? status.app.listeningAddresses.join(", ") : "none detected"}`);
@@ -83,12 +82,10 @@ const api = healthProbe.ok
   ? {
       ok: true,
       ai: healthProbe.data.ai || "demo",
-      safetyRouter: healthProbe.data.safetyRouter || safetyRouterVersion,
     }
   : {
       ok: false,
       ai: "offline",
-      safetyRouter: safetyRouterVersion,
     };
 
 const [status, appProbe] = await Promise.all([

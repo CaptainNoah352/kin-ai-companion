@@ -1,4 +1,4 @@
-import { defaultAppPort, getRuntimeStatus, safetyRouterVersion } from "../runtimeStatus.mjs";
+import { defaultAppPort, getRuntimeStatus } from "../runtimeStatus.mjs";
 
 const apiPort = Number(process.env.PORT || 8787);
 const appPort = Number(process.env.KIN_APP_PORT || defaultAppPort);
@@ -87,7 +87,6 @@ function printHealth({ label, appProbe, healthProbe, appLockProbe, runtimeStatus
   console.log(`App          ${appProbe.ok ? `OK HTTP ${appProbe.status}` : `FAIL ${appProbe.error}`}`);
   console.log(`API          ${healthProbe.ok ? `OK ${runtimeStatus.api.ai}` : `FAIL ${healthProbe.error}`}`);
   console.log(`App lock API ${appLockProbe.ok ? "OK" : `FAIL ${appLockProbe.error}`}`);
-  console.log(`Safety       ${runtimeStatus.api.safetyRouter || safetyRouterVersion}`);
   console.log(`Tailscale    ${runtimeStatus.tailscale.backendState}${runtimeStatus.tailscale.ip ? ` ${runtimeStatus.tailscale.ip}` : ""}`);
   console.log(`Startup      ${runtimeStatus.startup.installed ? "installed" : "not installed"} (${runtimeStatus.startup.taskName})`);
   console.log("");
@@ -119,12 +118,10 @@ const api = healthProbe.ok
   ? {
       ok: true,
       ai: healthProbe.data?.ai || "demo",
-      safetyRouter: healthProbe.data?.safetyRouter || safetyRouterVersion,
     }
   : {
       ok: false,
       ai: "offline",
-      safetyRouter: safetyRouterVersion,
     };
 
 const runtimeStatus = await getRuntimeStatus({ api, appPort });

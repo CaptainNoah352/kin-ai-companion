@@ -394,7 +394,7 @@ export function OnboardingFlow({
             <p>{limitationCopy}</p>
             <div className="notice-strip">
               <ShieldCheck size={20} />
-              Crisis resources stay visible. High-risk messages pause AI coaching.
+              Support resources stay available for reference, but Kin is not a crisis service.
             </div>
           </div>
         )}

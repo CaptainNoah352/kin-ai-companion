@@ -1,7 +1,6 @@
 import { EyeOff, Lock, ShieldAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getCrisisResource } from "../safety/crisisResources.js";
-import { SOSButton } from "../safety/SOSButton.jsx";
 import { isInCooldown } from "./appLockService.js";
 
 export function PrivacyLockScreen({ appLock, region = "US", onUnlock, onDeleteAll }) {
@@ -9,7 +8,6 @@ export function PrivacyLockScreen({ appLock, region = "US", onUnlock, onDeleteAl
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
-  const [showSafety, setShowSafety] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [now, setNow] = useState(Date.now());
   const resource = getCrisisResource(region);
@@ -79,7 +77,6 @@ export function PrivacyLockScreen({ appLock, region = "US", onUnlock, onDeleteAl
         </p>
 
         <div className="lock-actions">
-          <SOSButton onClick={() => setShowSafety(true)} />
           <a className="safety-action safety-action--primary" href={`tel:${resource.call || resource.emergency}`}>
             <ShieldAlert size={20} />
             <span>
@@ -88,31 +85,6 @@ export function PrivacyLockScreen({ appLock, region = "US", onUnlock, onDeleteAl
             </span>
           </a>
         </div>
-
-        {showSafety && (
-          <section className="safety-flow">
-            <div className="safety-flow__header">
-              <div className="safety-flow__icon">
-                <ShieldAlert size={22} />
-              </div>
-              <div>
-                <h2>Use immediate human support</h2>
-                <p>Normal AI coaching stays locked. This app is not a crisis service.</p>
-              </div>
-            </div>
-            <p className="safety-note">{resource.note}</p>
-            <div className="button-row">
-              <a className="primary-button primary-button--auto" href={`tel:${resource.call || resource.emergency}`}>
-                Call or text {resource.call || resource.emergency}
-              </a>
-              {resource.chatUrl && (
-                <a className="ghost-button" href={resource.chatUrl} target="_blank" rel="noreferrer">
-                  Open crisis chat
-                </a>
-              )}
-            </div>
-          </section>
-        )}
 
         <button className="ghost-button ghost-button--inline" type="button" onClick={() => setShowRecovery((value) => !value)}>
           Forgot passcode

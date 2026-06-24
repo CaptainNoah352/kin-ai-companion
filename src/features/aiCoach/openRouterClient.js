@@ -60,11 +60,10 @@ export async function createOpenRouterBrowserReply({ payload, userOpenRouter }) 
     content:
       data.choices?.[0]?.message?.content ||
       "I am here with you. Could you say that another way so I can follow you better?",
-    safetyLevel: "none",
     recommendedModuleIds: recommendModules({ text: latest, latestCheckIn: payload.latestCheckIn }),
     supportModes: payload.supportModes || [],
     suggestedChatMode: payload.suggestedChatMode || "Support",
     activeAppSpace: payload.activeAppSpace || "wellness",
-    explanation: "Browser generated response with the user's own OpenRouter key after local safety checks.",
+    explanation: "Browser generated response with the user's own OpenRouter key.",
   };
 }

@@ -1,7 +1,6 @@
 import { Check, Clock } from "lucide-react";
 import { useState } from "react";
 import { createCheckIn, getCheckInRecommendation } from "./checkInService.js";
-import { shouldPauseForSafety } from "../safety/safetyRouter.js";
 
 const initialForm = {
   moodScore: 6,
@@ -17,7 +16,7 @@ const initialForm = {
   safeNowNote: "",
 };
 
-export function DailyCheckIn({ onComplete, onSafety, latestCheckIn }) {
+export function DailyCheckIn({ onComplete, latestCheckIn }) {
   const [form, setForm] = useState(initialForm);
   const recommendation = latestCheckIn ? getCheckInRecommendation(latestCheckIn) : null;
 
@@ -29,9 +28,6 @@ export function DailyCheckIn({ onComplete, onSafety, latestCheckIn }) {
     event.preventDefault();
     const checkIn = createCheckIn(form);
     onComplete(checkIn);
-    if (shouldPauseForSafety({ level: checkIn.safetyFlag })) {
-      onSafety(form.note || form.safeNowNote, "check_in");
-    }
     setForm(initialForm);
   }
 

@@ -1,6 +1,6 @@
 import { filterCheckInsByDays } from "../progress/trendUtils.js";
 
-export function generateHandoffSummary({ checkIns = [], completedModules = [], safetySignals = [], carePlan }, days = 7) {
+export function generateHandoffSummary({ checkIns = [], completedModules = [], carePlan }, days = 7) {
   const range = filterCheckInsByDays(checkIns, days);
   const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -15,10 +15,6 @@ export function generateHandoffSummary({ checkIns = [], completedModules = [], s
       .filter((item) => new Date(item.completedAt).getTime() >= new Date(start).getTime())
       .map((item) => item.title),
     currentStressors: range.map((item) => item.stressor).filter(Boolean).slice(-5),
-    safetyConcerns: safetySignals
-      .filter((item) => item.level !== "none")
-      .map((item) => `${item.level}: ${item.category}`)
-      .slice(0, 5),
     userNotes:
       "AI-generated summary for user review. The user should remove any section they do not want to share.",
     generatedAt: new Date().toISOString(),

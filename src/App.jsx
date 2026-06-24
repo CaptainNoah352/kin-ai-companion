@@ -1,7 +1,6 @@
 import {
   Activity,
   BarChart3,
-  BookOpen,
   Brain,
   CheckCircle2,
   FileCheck2,
@@ -44,7 +43,6 @@ import { DailyCheckIn } from "./features/checkins/DailyCheckIn.jsx";
 import { getCheckInRecommendation, getLatestCheckIn } from "./features/checkins/checkInService.js";
 import { GoalsCenter } from "./features/goals/GoalsCenter.jsx";
 import { InterventionRunner } from "./features/interventions/InterventionRunner.jsx";
-import { getInterventionById } from "./features/interventions/interventionService.js";
 import { JournalCenter } from "./features/journal/JournalCenter.jsx";
 import { MemoryCenter } from "./features/memory/MemoryCenter.jsx";
 import { addMemorySummary, createDefaultMemory, setAutoChatSummary } from "./features/memory/memoryService.js";
@@ -69,10 +67,7 @@ import { PrivacyLockScreen } from "./features/privacy/PrivacyLockScreen.jsx";
 import { buildTrendSummary } from "./features/progress/trendUtils.js";
 import { ProgressDashboard } from "./features/progress/ProgressDashboard.jsx";
 import { WeeklyReview } from "./features/review/WeeklyReview.jsx";
-import { SafetyFlow } from "./features/safety/SafetyFlow.jsx";
-import { classifyAndStoreSafety } from "./features/safety/safetyLogger.js";
-import { SafetyPlan } from "./features/safety/SafetyPlan.jsx";
-import { SOSButton } from "./features/safety/SOSButton.jsx";
+import { SupportResources } from "./features/safety/SupportResources.jsx";
 import { ProductionReadinessChecklist } from "./features/setup/ProductionReadinessChecklist.jsx";
 import { SetupChecklist } from "./features/setup/SetupChecklist.jsx";
 import { GoogleLoginGate } from "./features/sync/GoogleLoginGate.jsx";
@@ -130,7 +125,7 @@ const utilityNavItems = [
   { id: "Profile", label: "Profile", icon: UserRound },
   { id: "Check In", label: "Check In", icon: Activity },
   { id: "Memory", label: "Memory", icon: UserRound },
-  { id: "Safety", label: "Safety", icon: Shield },
+  { id: "Safety", label: "Support", icon: Shield },
   { id: "Privacy", label: "Privacy / Sync", icon: Lock },
 ];
 
@@ -159,7 +154,6 @@ const defaultConsent = {
   allowPersonalization: true,
   allowAnalytics: false,
   allowModelTraining: false,
-  allowCrisisContactUse: false,
   createdAt: "",
   updatedAt: "",
 };
@@ -198,7 +192,6 @@ export default function App() {
   const [chatMode, setChatMode] = useState("Support");
   const [startSuggestedTask, setStartSuggestedTask] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState("grounding-54321");
-  const [safetySignal, setSafetySignal] = useState(null);
   const [apiMode, setApiMode] = useState("checking");
   const [apiStatusNotice, setApiStatusNotice] = useState("");
   const [consent, setConsent] = useStoredState(storageKeys.consent, defaultConsent);
@@ -215,8 +208,6 @@ export default function App() {
   const [completedModules, setCompletedModules] = useStoredState(storageKeys.completedModules, []);
   const [moduleDrafts, setModuleDrafts] = useStoredState(storageKeys.moduleDrafts, {});
   const [carePlan, setCarePlan] = useStoredState(storageKeys.carePlan, null);
-  const [safetySignals, setSafetySignals] = useStoredState(storageKeys.safetySignals, []);
-  const [safetyPlan, setSafetyPlan] = useStoredState(storageKeys.safetyPlan, null);
   const [memory, setMemory] = useStoredState(storageKeys.memory, createDefaultMemory());
   const [appLock, setAppLock] = useStoredState(storageKeys.appLock, createDefaultAppLock());
   const [auditEvents, setAuditEvents] = useStoredState(storageKeys.auditEvents, []);
@@ -521,8 +512,6 @@ export default function App() {
     completedModules,
     moduleDrafts,
     carePlan,
-    safetySignals,
-    safetyPlan,
     memory,
     appLock,
     auditEvents,
@@ -578,8 +567,6 @@ export default function App() {
     completedModules,
     moduleDrafts,
     carePlan,
-    safetySignals,
-    safetyPlan,
     memory,
     appLock,
     auditEvents,
@@ -688,10 +675,6 @@ export default function App() {
   ]);
 
   function openModule(moduleId) {
-    if (moduleId === "safety-plan") {
-      selectTab("Safety");
-      return;
-    }
     setSelectedModuleId(moduleId);
     openTabInAppSpace(appSpaceIds.wellness, "Tools");
   }
@@ -751,38 +734,15 @@ export default function App() {
     openTabInAppSpace(appSpaceIds.adhd, "Review");
   }
 
-  function handleSafety(input, source = "ai_chat") {
-    const { signal, signals } = classifyAndStoreSafety(input, { source, userId: "local-user" }, safetySignals);
-    if (signal.level !== "none") {
-      setSafetySignals(signals);
-      setSafetySignal(signal);
-      setAuditEvents((events) =>
-        appendAuditEvent(events, "safety_flow_triggered", {
-          source,
-          category: signal.category,
-          level: signal.level,
-        }),
-      );
-    }
-    return signal;
-  }
-
   function handleCheckInComplete(checkIn) {
     setCheckIns((current) => [checkIn, ...current]);
-    setAuditEvents((events) => appendAuditEvent(events, "check_in_completed", { safetyFlag: checkIn.safetyFlag }));
+    setAuditEvents((events) => appendAuditEvent(events, "check_in_completed"));
   }
 
   function handleModuleComplete(module) {
     setCompletedModules((current) => [module, ...current]);
     setAuditEvents((events) => appendAuditEvent(events, "module_completed", { moduleId: module.moduleId }));
     openTabInAppSpace(appSpaceIds.wellness, "Progress");
-  }
-
-  function saveSafetyPlan(plan) {
-    setSafetyPlan(plan);
-    setAuditEvents((events) =>
-      appendAuditEvent(events, "safety_plan_updated", { contactCount: plan.trustedContacts.length }),
-    );
   }
 
   function saveMemorySummary(text) {
@@ -863,8 +823,6 @@ export default function App() {
       completedModules,
       moduleDrafts,
       carePlan,
-      safetySignals,
-      safetyPlan,
       memory,
       appLock,
       auditEvents,
@@ -953,8 +911,6 @@ export default function App() {
     setCompletedModules(restoredKinData.completedModules ?? []);
     setModuleDrafts(restoredKinData.moduleDrafts ?? {});
     setCarePlan(restoredKinData.carePlan ?? null);
-    setSafetySignals(restoredKinData.safetySignals ?? []);
-    setSafetyPlan(restoredKinData.safetyPlan ?? null);
     setMemory(createDefaultMemory(restoredKinData.memory));
     setAppLock(restoredKinData.appLock ?? createDefaultAppLock());
     setAuditEvents(restoredKinData.auditEvents ?? []);
@@ -1212,14 +1168,22 @@ export default function App() {
         setVaultPasscode(passcode);
         setVaultUnlocked(true);
         setSyncMessage(`Vault unlocked. Last saved ${formatSyncTimestamp(payload.updatedAt)}.`);
-        void getDriveAccessToken({ allowTokenPrompt: false, prompt: "" }).catch((tokenError) => {
+        try {
+          const normalizedSync = createDefaultDriveSync(driveSync);
+          await getDriveAccessToken({
+            allowTokenPrompt: true,
+            prompt: normalizedSync.fileId ? "" : "consent",
+          });
+        } catch (tokenError) {
+          syncAfterUnlockRef.current = false;
           setDriveSync((current) => ({
             ...createDefaultDriveSync(current),
             enabled: true,
             status: "needs-google-session",
             error: normalizeDriveSyncError(tokenError),
           }));
-        });
+          setSyncError("Drive token refresh needed. Tap Sync now.");
+        }
         return { ok: true };
       }
 
@@ -1503,8 +1467,6 @@ export default function App() {
     setCompletedModules([]);
     setModuleDrafts({});
     setCarePlan(null);
-    setSafetySignals([]);
-    setSafetyPlan(null);
     setMemory(createDefaultMemory());
     setVaultPasscode("");
     setVaultUnlocked(false);
@@ -1539,8 +1501,6 @@ export default function App() {
     setCompletedModules([]);
     setModuleDrafts({});
     setCarePlan(null);
-    setSafetySignals([]);
-    setSafetyPlan(null);
     setMemory(createDefaultMemory());
     setAppLock(undefined);
     setInstallHintDismissed(false);
@@ -1808,9 +1768,6 @@ export default function App() {
     Home: (
       <HomeView
         latestCheckIn={latestCheckIn}
-        trendSummary={trendSummary}
-        recommendation={recommendation}
-        carePlan={carePlan}
         goals={goals}
         activeAppSpace={normalizedAppSpace}
         onStartCheckIn={() => selectTab("Check In")}
@@ -1819,18 +1776,10 @@ export default function App() {
         onOpenGoals={openGoals}
         onOpenStart={openStart}
         onOpenReview={openReview}
-        onOpenJournal={() => selectTab("Journal")}
-        onOpenMemory={() => selectTab("Memory")}
-        onOpenTools={() => selectTab("Tools")}
-        onOpenProgress={() => selectTab("Progress")}
-        onOpenPrivacy={() => selectTab("Privacy")}
-        onOpenSafety={() => selectTab("Safety")}
         onOpenModule={openModule}
       />
     ),
-    "Check In": (
-      <DailyCheckIn latestCheckIn={latestCheckIn} onComplete={handleCheckInComplete} onSafety={handleSafety} />
-    ),
+    "Check In": <DailyCheckIn latestCheckIn={latestCheckIn} onComplete={handleCheckInComplete} />,
     Chat: (
       <AiCoachChat
         messages={messages}
@@ -1840,7 +1789,6 @@ export default function App() {
         memory={memory}
         region={region}
         consent={consent}
-        onSafety={handleSafety}
         onOpenModule={openModule}
         onOpenMemory={() => selectTab("Memory")}
         onSaveMemorySummary={saveMemorySummary}
@@ -1901,18 +1849,9 @@ export default function App() {
         checkIns={checkIns}
         completedModules={completedModules}
         carePlan={carePlan}
-        safetySignals={safetySignals}
       />
     ),
-    Safety: (
-      <SafetyView
-        safetySignal={safetySignal}
-        region={region}
-        safetyPlan={safetyPlan}
-        onSavePlan={saveSafetyPlan}
-        onClearFlow={() => setSafetySignal(null)}
-      />
-    ),
+    Safety: <SupportView region={region} />,
     Privacy: (
       <PrivacyCenter
         consent={consent}
@@ -1982,17 +1921,6 @@ export default function App() {
     ),
   }[activeTab];
 
-  const visibleComponent = safetySignal && activeTab !== "Safety" ? (
-    <SafetyFlow
-      signal={safetySignal}
-      region={region}
-      onClose={() => setSafetySignal(null)}
-      onOpenPlan={() => selectTab("Safety")}
-    />
-  ) : (
-    activeComponent
-  );
-
   if (isPhoneShell) {
     const showInstallHint = activeTab !== "Privacy" && shouldShowPhoneInstallHint({ dismissed: installHintDismissed });
     return (
@@ -2002,7 +1930,7 @@ export default function App() {
             <Leaf size={23} />
             <span>
               <strong>Kin {activeAppMeta.shortLabel}</strong>
-              <small>{activeTab}</small>
+              <small>{activeTab === "Safety" ? "Support" : activeTab}</small>
             </span>
           </div>
           <div className="phone-header-actions">
@@ -2017,7 +1945,6 @@ export default function App() {
               <MoreHorizontal size={17} />
               <span>More</span>
             </button>
-            <SOSButton compact onClick={() => selectTab("Safety")} />
           </div>
         </header>
 
@@ -2029,7 +1956,7 @@ export default function App() {
               onDismiss={() => setInstallHintDismissed(true)}
             />
           )}
-          {visibleComponent}
+          {activeComponent}
         </section>
 
         {phoneMoreOpen && (
@@ -2129,8 +2056,6 @@ export default function App() {
           })}
         </nav>
 
-        <SOSButton onClick={() => selectTab("Safety")} />
-
         <section className="mode-card">
           <Sparkles size={18} />
           <div>
@@ -2146,7 +2071,7 @@ export default function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <h1>{activeTab === "Chat" ? activeAppMeta.chatTitle : activeTab}</h1>
+            <h1>{activeTab === "Chat" ? activeAppMeta.chatTitle : activeTab === "Safety" ? "Support" : activeTab}</h1>
             <p>{formatToday()} - This app does not diagnose or replace professional care.</p>
           </div>
           <div className="topbar-actions">
@@ -2156,20 +2081,10 @@ export default function App() {
             </button>
             <ThemeToggle setting={theme} onCycle={() => setTheme(cycleThemeSetting)} className="icon-text-button theme-toggle" />
             <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
-            <SOSButton compact onClick={() => selectTab("Safety")} />
           </div>
         </header>
 
-        {safetySignal && activeTab !== "Safety" ? (
-          <SafetyFlow
-            signal={safetySignal}
-            region={region}
-            onClose={() => setSafetySignal(null)}
-            onOpenPlan={() => selectTab("Safety")}
-          />
-        ) : (
-          activeComponent
-        )}
+        {activeComponent}
       </section>
 
       {activeTab === "Home" && (
@@ -2179,7 +2094,7 @@ export default function App() {
           recommendation={recommendation}
           onOpenModule={openModule}
           onOpenPrivacy={() => selectTab("Privacy")}
-          onOpenSafety={() => selectTab("Safety")}
+          onOpenSupport={() => selectTab("Safety")}
         />
       )}
     </main>
@@ -2239,9 +2154,6 @@ function AppSpaceSwitcher({ activeAppSpace, onSwitch, compact = false }) {
 
 function HomeView({
   latestCheckIn,
-  trendSummary,
-  recommendation,
-  carePlan,
   goals,
   activeAppSpace = appSpaceIds.wellness,
   onStartCheckIn,
@@ -2250,15 +2162,8 @@ function HomeView({
   onOpenGoals,
   onOpenStart,
   onOpenReview,
-  onOpenJournal,
-  onOpenMemory,
-  onOpenTools,
-  onOpenProgress,
-  onOpenPrivacy,
-  onOpenSafety,
   onOpenModule,
 }) {
-  const suggested = getInterventionById(recommendation.moduleIds[0]) || getInterventionById("grounding-54321");
   const activeGoalCount = (Array.isArray(goals) ? goals : []).filter(
     (goal) => goal?.status !== "done" && goal?.status !== "archived",
   ).length;
@@ -2288,7 +2193,8 @@ function HomeView({
         {isAdhd ? <Brain className="hero-leaf" size={92} aria-hidden="true" /> : <Leaf className="hero-leaf" size={92} aria-hidden="true" />}
       </article>
 
-      <section className="home-action-grid" aria-label="Home actions">
+      <h3 className="home-section-heading">Quick actions</h3>
+      <section className="home-action-grid" aria-label="Quick actions">
         {isAdhd ? (
           <HomeAction
             icon={Brain}
@@ -2342,129 +2248,6 @@ function HomeView({
           onClick={onOpenReview}
         />
       </section>
-
-      <section className="wellness-shortcuts" aria-label="Wellness shortcuts">
-        <div className="wellness-shortcuts__heading">
-          <h3>{isAdhd ? "Connected Wellness tools" : "Wellness tools"}</h3>
-          <p>
-            {isAdhd
-              ? "ADHD support can use mood, journal, and grounding context when pressure or shame is part of the block."
-              : "Check in, journal, track patterns, and manage privacy without leaving Kin."}
-          </p>
-        </div>
-        <div className="wellness-shortcuts__grid">
-          <HomeAction
-            icon={Activity}
-            title="Check in"
-            copy="Log mood, stress, sleep, and safety signals."
-            action="Open"
-            onClick={onStartCheckIn}
-          />
-          <HomeAction
-            icon={PenLine}
-            title="Journal"
-            copy="Write private reflections that can sync through your encrypted vault."
-            action="Open"
-            onClick={onOpenJournal}
-          />
-          <HomeAction
-            icon={Wrench}
-            title="Grounding tools"
-            copy="Use structured coping tools like breathing and 5-4-3-2-1."
-            action="Open"
-            onClick={onOpenTools}
-          />
-          <HomeAction
-            icon={BarChart3}
-            title="Progress"
-            copy="Review check-in trends and completed support tools."
-            action="Open"
-            onClick={onOpenProgress}
-          />
-          <HomeAction
-            icon={UserRound}
-            title="Memory"
-            copy="Edit what Kin can remember for personalized support."
-            action="Open"
-            onClick={onOpenMemory}
-          />
-          <HomeAction
-            icon={Lock}
-            title="Privacy / Sync"
-            copy="Manage Google Drive vault sync, app lock, export, and delete."
-            action="Open"
-            onClick={onOpenPrivacy}
-          />
-        </div>
-      </section>
-
-      <article className="coach-preview">
-        <Brain size={22} />
-        <div>
-          <h3>{isAdhd ? "Connected to Wellness" : "Connected to ADHD / Focus"}</h3>
-          <p>
-            {isAdhd
-              ? "If a task is carrying shame, anxiety, or overwhelm, the Coach can bring in Wellness context and still choose one tiny action."
-              : "If you are stuck, distracted, or unable to start, Wellness can hand the problem to ADHD / Focus without losing the emotional context."}
-          </p>
-          <div className="button-row">
-            <button className="secondary-button secondary-button--auto" type="button" onClick={() => onOpenChatMode("Focus")}>
-              Focus support
-            </button>
-            <button className="ghost-button" type="button" onClick={() => onOpenStart("")}>
-              Start button
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <article className="module-card">
-        <Wrench size={21} />
-        <h3>Suggested tool</h3>
-        <p>{recommendation.reason}</p>
-        <button type="button" onClick={() => onOpenModule(suggested.id)}>
-          Start {suggested.title}
-        </button>
-      </article>
-
-      <article className="module-card">
-        <BookOpen size={21} />
-        <h3>Care focus</h3>
-        <p>{carePlan?.focusAreas?.map((area) => area.label.replaceAll("_", " ")).join(", ") || "Not set yet"}</p>
-        <button type="button" onClick={() => onOpenModule(carePlan?.recommendedModuleIds?.[0] || "grounding-54321")}>
-          Update care focus
-        </button>
-      </article>
-
-      <article className="module-card">
-        <BarChart3 size={21} />
-        <h3>Progress insight</h3>
-        <p>{trendSummary.insight}</p>
-        <div className="mini-progress">
-          <span>{trendSummary.count} / 7</span>
-          <div>
-            <i style={{ width: `${Math.min(100, (trendSummary.count / 7) * 100)}%` }} />
-          </div>
-        </div>
-      </article>
-
-      <article className="module-card">
-        <Lock size={21} />
-        <h3>Privacy and sync</h3>
-        <p>Manage Google Drive vault sync, app lock, export, and delete controls.</p>
-        <button type="button" onClick={onOpenPrivacy}>
-          Open Privacy
-        </button>
-      </article>
-
-      <article className="module-card">
-        <Shield size={21} />
-        <h3>Safety support</h3>
-        <p>Open crisis resources, safety planning, and SOS support.</p>
-        <button type="button" onClick={onOpenSafety}>
-          Open Safety
-        </button>
-      </article>
     </section>
   );
 }
@@ -2570,7 +2353,7 @@ function apiStatusCopy(mode) {
   return copy[mode] || copy.demo;
 }
 
-function RightRail({ latestCheckIn, consent, recommendation, onOpenModule, onOpenPrivacy, onOpenSafety }) {
+function RightRail({ latestCheckIn, consent, recommendation, onOpenModule, onOpenPrivacy, onOpenSupport }) {
   return (
     <aside className="right-rail">
       <section className="rail-panel">
@@ -2587,7 +2370,7 @@ function RightRail({ latestCheckIn, consent, recommendation, onOpenModule, onOpe
           <LifeBuoy size={20} />
           <h2>Crisis resources</h2>
         </div>
-        <button className="crisis-call" type="button" onClick={onOpenSafety}>
+        <button className="crisis-call" type="button" onClick={onOpenSupport}>
           988
           <span>Call or text 988 in the U.S.</span>
         </button>
@@ -2626,11 +2409,10 @@ function RightRail({ latestCheckIn, consent, recommendation, onOpenModule, onOpe
   );
 }
 
-function SafetyView({ safetySignal, region, safetyPlan, onSavePlan, onClearFlow }) {
+function SupportView({ region }) {
   return (
     <div className="safety-view">
-      <SafetyFlow signal={safetySignal || { level: "low", category: "none" }} region={region} onClose={onClearFlow} onOpenPlan={() => {}} />
-      <SafetyPlan plan={safetyPlan} onSave={onSavePlan} />
+      <SupportResources region={region} />
     </div>
   );
 }

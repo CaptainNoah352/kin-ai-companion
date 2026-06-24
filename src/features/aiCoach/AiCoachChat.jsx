@@ -7,7 +7,6 @@ import { createOpenRouterBrowserReply } from "./openRouterClient.js";
 import { formatKinApiError, postKinApiJson } from "../../lib/kinApiClient.js";
 import { shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
 import { buildConversationSummary, MEMORY_SUMMARY_MIN_LENGTH } from "../memory/memoryService.js";
-import { classifySafety, shouldPauseForSafety } from "../safety/safetyRouter.js";
 import { buildModeSuggestion, chatModes } from "../supportModes/supportModeService.js";
 import { parseInlineMarkdown } from "./richMessageText.js";
 
@@ -18,7 +17,6 @@ export function AiCoachChat({
   latestCheckIn,
   memory,
   region,
-  onSafety,
   onOpenModule,
   onAutoSaveMemory,
   userOpenRouter,
@@ -77,23 +75,6 @@ export function AiCoachChat({
     const trimmed = text.trim();
     if (!trimmed || isSending || !consent?.aiDisclosureAccepted) return;
 
-    const safety = classifySafety(trimmed, { source: "ai_chat" });
-    if (shouldPauseForSafety(safety)) {
-      onSafety(trimmed, "ai_chat");
-      setMessages((current) => [
-        ...current,
-        { role: "user", content: trimmed },
-        {
-          role: "assistant",
-          content: "Normal AI coaching is paused while the safety flow opens.",
-          safetyLevelAtGeneration: safety.level,
-          recommendedModuleIds: ["safety-plan"],
-        },
-      ]);
-      setInput("");
-      return;
-    }
-
     const suggestion = buildModeSuggestion(trimmed, { manualChatMode: chatMode, latestCheckIn });
     setModeSuggestion(suggestion);
     const userMessage = {
@@ -143,15 +124,11 @@ export function AiCoachChat({
               activeAppSpace,
               bridgeContext,
             });
-      if (data.blocked || data.safety?.level === "high" || data.safety?.level === "imminent") {
-        onSafety(trimmed, "ai_chat");
-      }
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
           content: data.content,
-          safetyLevelAtGeneration: data.safetyLevel || data.safety?.level || "none",
           recommendedModuleIds: data.recommendedModuleIds || [],
           supportModes: data.supportModes || suggestion.modes,
           suggestedChatMode: data.suggestedChatMode || suggestion.suggestedChatMode,
@@ -168,7 +145,6 @@ export function AiCoachChat({
               error,
               "Kin could not reach the AI server, so the real chat model did not respond. Check that the Kin API is running, then try again.",
             ),
-            safetyLevelAtGeneration: "none",
             recommendedModuleIds: [],
             supportModes: suggestion.modes,
             suggestedChatMode: suggestion.suggestedChatMode,
@@ -195,7 +171,6 @@ export function AiCoachChat({
         {
           role: "assistant",
           content: fallback.content,
-          safetyLevelAtGeneration: fallback.safetyLevel || fallback.safety?.level || "none",
           recommendedModuleIds: fallback.recommendedModuleIds || [],
           supportModes: fallback.supportModes || suggestion.modes,
           suggestedChatMode: fallback.suggestedChatMode || suggestion.suggestedChatMode,

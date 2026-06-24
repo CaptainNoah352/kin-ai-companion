@@ -56,7 +56,6 @@ export function PrivacyCenter({
           <PrivacyToggle label="Personalization" checked={consent.allowPersonalization} onClick={() => toggle("allowPersonalization")} />
           <PrivacyToggle label="Analytics" checked={consent.allowAnalytics} onClick={() => toggle("allowAnalytics")} />
           <PrivacyToggle label="Model training" checked={consent.allowModelTraining} onClick={() => toggle("allowModelTraining")} />
-          <PrivacyToggle label="Crisis contact use" checked={consent.allowCrisisContactUse} onClick={() => toggle("allowCrisisContactUse")} />
         </div>
 
         <div className="privacy-actions">
@@ -116,7 +115,7 @@ export function PrivacyCenter({
         </div>
         <p className="plain-copy">
           This app does not diagnose or replace professional care. It does not prescribe medication, provide crisis
-          counseling, or make emergency decisions. High-risk input pauses normal coaching and opens the safety flow.
+          counseling, or make emergency decisions. The Support page provides reference links for human crisis and emergency resources.
         </p>
       </section>
     </section>

@@ -108,17 +108,6 @@ export const dataCategories = [
     usedForModelTraining: false,
   },
   {
-    key: "safetySignals",
-    label: "Safety signals",
-    purpose: "Records risk routing actions without storing raw matched text.",
-    required: true,
-    retentionDays: 365,
-    userCanDelete: true,
-    usedForAiPersonalization: false,
-    usedForAnalytics: false,
-    usedForModelTraining: false,
-  },
-  {
     key: "memory",
     label: "Personal memory",
     purpose: "Stores user-editable context and saved conversation summaries in this browser.",
@@ -182,12 +171,13 @@ export const dataCategories = [
 ];
 
 export function buildPrivacyExport(data) {
+  const exportableData = stripLegacySafetyData(data);
   const exportData = {
-    ...data,
-    appLock: data?.appLock ? redactAppLockForExport(data.appLock) : null,
-    encryptedVault: redactEncryptedVaultForExport(data?.encryptedVault),
-    sync: redactSyncForExport(data?.sync),
-    trustedVaultUnlock: redactTrustedVaultUnlockForExport(data?.trustedVaultUnlock || data?.sync?.trustedVaultUnlock),
+    ...exportableData,
+    appLock: exportableData?.appLock ? redactAppLockForExport(exportableData.appLock) : null,
+    encryptedVault: redactEncryptedVaultForExport(exportableData?.encryptedVault),
+    sync: redactSyncForExport(exportableData?.sync),
+    trustedVaultUnlock: redactTrustedVaultUnlockForExport(exportableData?.trustedVaultUnlock || exportableData?.sync?.trustedVaultUnlock),
   };
 
   return {
@@ -198,6 +188,11 @@ export function buildPrivacyExport(data) {
       "This export is user-controlled and may include sensitive mental health support data from this browser.",
     data: exportData,
   };
+}
+
+function stripLegacySafetyData(data = {}) {
+  const { safetySignals, safetyPlan, ...rest } = data || {};
+  return rest;
 }
 
 function redactEncryptedVaultForExport(envelope) {

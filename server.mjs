@@ -8,7 +8,6 @@ import express from "express";
 import cors from "cors";
 import { AI_COACH_SYSTEM_PROMPT } from "./src/features/aiCoach/aiCoachPrompts.js";
 import { classifyCoachBoundary, createCoachReply, recommendModules } from "./src/features/aiCoach/aiCoachService.js";
-import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "./src/features/safety/safetyRouter.js";
 import { buildAppSpacePromptContext } from "./src/features/appSpaces/appSpaceService.js";
 import { normalizeBreakdownResponse, normalizeSpiciness } from "./src/features/adhdTasks/adhdTaskService.js";
 import { buildTaskBreakdownMessages, taskBreakdownOpenRouterModel } from "./src/features/adhdTasks/taskBreakdownClient.js";
@@ -19,7 +18,7 @@ import {
   openRouterModelDefaults,
 } from "./src/features/aiModels/modelPolicy.js";
 import { buildModeSuggestion, buildSupportModePromptContext } from "./src/features/supportModes/supportModeService.js";
-import { getRuntimeStatus, safetyRouterVersion } from "./runtimeStatus.mjs";
+import { getRuntimeStatus } from "./runtimeStatus.mjs";
 
 const modulePath = fileURLToPath(import.meta.url);
 const moduleDir = dirname(modulePath);
@@ -105,7 +104,6 @@ function buildApiStatus() {
   return {
     ok: true,
     ai: provider,
-    safetyRouter: safetyRouterVersion,
     modelRoles: provider === "openrouter" ? buildOpenRouterModelDiagnostics(process.env) : undefined,
   };
 }
@@ -178,12 +176,6 @@ export async function chatReply({
   bridgeContext = null,
 }) {
   const latest = messages.at(-1)?.content || "";
-  const safety = await classifySafetyWithBackup(latest, { source: "ai_chat" });
-
-  if (shouldPauseForSafety(safety)) {
-    return buildSafetyResponse(safety, region);
-  }
-
   const boundary = classifyCoachBoundary(latest);
   const provider = getAiProvider();
   const safeMemory = sanitizeMemory(memory);
@@ -232,12 +224,11 @@ export async function chatReply({
   return {
     role: "assistant",
     content: text,
-    safetyLevel: safety.level,
     recommendedModuleIds: recommendModules({ text: latest, latestCheckIn }),
     supportModes: resolvedSupportModes,
     suggestedChatMode: resolvedSuggestedChatMode,
     activeAppSpace,
-    explanation: `Server generated response with ${provider} after safety and boundary checks.`,
+    explanation: `Server generated response with ${provider} after boundary checks.`,
   };
 }
 
@@ -392,70 +383,6 @@ export async function taskBreakdown({ task, spiciness }) {
     : openAiTaskBreakdown({ task, spiciness });
 }
 
-export async function classifySafetyWithBackup(input, context = {}) {
-  const deterministic = classifySafety(input, context);
-  if (shouldPauseForSafety(deterministic) || getAiProvider() !== "openrouter") {
-    return deterministic;
-  }
-
-  try {
-    const backup = await openRouterSafetyBackup(input, context);
-    return mergeSafetySignals(deterministic, backup);
-  } catch (error) {
-    console.warn("Safety backup classification failed:", error.message);
-    return deterministic;
-  }
-}
-
-async function openRouterSafetyBackup(input, context = {}) {
-  const text = await openRouterChatCompletion({
-    model: getOpenRouterModelForRole(aiModelRoles.safetyBackup, process.env),
-    messages: [
-      {
-        role: "system",
-        content: [
-          "Classify mental-health safety risk for a wellness support app.",
-          "Return only JSON: {\"category\":\"none|unknown_high_distress|self_harm_ideation|self_harm_intent|suicide_plan_or_means|violence_to_others|abuse_or_exploitation|minor_user_high_risk|psychosis_or_reality_confusion|mania_or_severe_impulsivity|medical_emergency|severe_intoxication_or_overdose\",\"level\":\"none|low|moderate|high|imminent\",\"confidence\":0}",
-          "Escalate only when the text itself indicates risk. Do not downgrade deterministic rules.",
-        ].join("\n"),
-      },
-      {
-        role: "user",
-        content: String(input || "").slice(0, 600),
-      },
-    ],
-    responseFormat: { type: "json_object" },
-    fallbackLabel: "OpenRouter safety backup",
-  });
-  const parsed = parseJsonObject(text);
-  return {
-    source: context.source || "ai_chat",
-    category: normalizeSafetyCategory(parsed.category),
-    level: normalizeSafetyLevel(parsed.level),
-    confidence: normalizeConfidence(parsed.confidence),
-    actions: [],
-  };
-}
-
-function mergeSafetySignals(deterministic, backup) {
-  const levelRank = { none: 0, low: 1, moderate: 2, high: 3, imminent: 4 };
-  if (!backup || levelRank[backup.level] <= levelRank[deterministic.level || "none"]) {
-    return deterministic;
-  }
-
-  return {
-    ...deterministic,
-    category: backup.category || deterministic.category,
-    level: backup.level,
-    confidence: Math.max(Number(deterministic.confidence || 0), Number(backup.confidence || 0)),
-    actionTaken: backupActionsForLevel(backup.level),
-    backupClassifier: {
-      provider: "openrouter",
-      model: getOpenRouterModelForRole(aiModelRoles.safetyBackup, process.env),
-    },
-  };
-}
-
 function selectChatModelRole({ text = "", latestCheckIn, supportModes = [] } = {}) {
   if (isDeepEmotionalSupport({ text, latestCheckIn, supportModes })) return aiModelRoles.deepSupport;
   if (supportModes.includes("goal_tracking") || supportModes.includes("planning")) return aiModelRoles.goal;
@@ -471,52 +398,6 @@ function isDeepEmotionalSupport({ text = "", latestCheckIn, supportModes = [] } 
     latestCheckIn?.anxietyScore >= 8 ||
     latestCheckIn?.stressScore >= 8;
   return hasEmotionalMode && hasDeepSignal;
-}
-
-function parseJsonObject(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = String(text || "").match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : {};
-  }
-}
-
-function normalizeSafetyLevel(level) {
-  return ["none", "low", "moderate", "high", "imminent"].includes(level) ? level : "none";
-}
-
-function normalizeSafetyCategory(category) {
-  return [
-    "none",
-    "unknown_high_distress",
-    "self_harm_ideation",
-    "self_harm_intent",
-    "suicide_plan_or_means",
-    "violence_to_others",
-    "abuse_or_exploitation",
-    "minor_user_high_risk",
-    "psychosis_or_reality_confusion",
-    "mania_or_severe_impulsivity",
-    "medical_emergency",
-    "severe_intoxication_or_overdose",
-  ].includes(category)
-    ? category
-    : "none";
-}
-
-function normalizeConfidence(confidence) {
-  const numeric = Number(confidence);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.min(1, Math.max(0, numeric));
-}
-
-function backupActionsForLevel(level) {
-  if (level === "imminent") return ["show_sos", "pause_ai_chat", "show_emergency_services", "show_988_or_local_crisis"];
-  if (level === "high") return ["show_sos", "pause_ai_chat", "ask_direct_safety_question", "show_988_or_local_crisis"];
-  if (level === "moderate") return ["pause_ai_chat", "ask_direct_safety_question", "show_988_or_local_crisis"];
-  if (level === "low") return ["ask_direct_safety_question", "recommend_human_support"];
-  return [];
 }
 
 function buildAiErrorPayload(error, { endpoint, fallbackMessage }) {
@@ -548,12 +429,6 @@ app.get("/api/runtime/status", async (_req, res) => {
   });
 
   res.json(status);
-});
-
-app.post("/api/safety/classify", async (req, res) => {
-  const input = typeof req.body.input === "string" ? req.body.input : "";
-  const source = typeof req.body.source === "string" ? req.body.source : "ai_chat";
-  res.json(await classifySafetyWithBackup(input, { source }));
 });
 
 app.post("/api/app-lock/derive", async (req, res) => {

@@ -12,7 +12,7 @@ Kin keeps emotional support and ADHD/focus support inside one app. The primary n
 Home | Chat | Goals | Start | Review
 ```
 
-Every Chat message runs through the Safety Router first. If normal coaching can continue, Kin classifies the message into support intents such as emotional support, ADHD/focus, goal tracking, task start, procrastination, planning, grounding, or crisis routing. The Chat mode selector lets the user choose `Support`, `Focus`, `Goals`, `Unblock`, or `Calm`, and Kin can suggest a better fit after reading the message.
+Kin classifies chat messages into support intents such as emotional support, ADHD/focus, goal tracking, task start, procrastination, planning, or grounding. The Chat mode selector lets the user choose `Support`, `Focus`, `Goals`, `Unblock`, or `Calm`, and Kin can suggest a better fit after reading the message.
 
 If a user is overwhelmed, stuck, ashamed, anxious, depressed, distracted, procrastinating, or unable to start, Kin blends emotional support with executive-function support instead of making them choose between "mental health" and "ADHD."
 
@@ -108,7 +108,7 @@ VITE_GOOGLE_CLIENT_ID=your_google_oauth_web_client_id
 
 No Google client secret belongs in this app. The OAuth client id is public. Users keep their own Google account, vault passcode, and optional OpenRouter key inside the encrypted vault from Privacy -> Google Drive sync.
 
-For GitHub/static use, the Coach can call OpenRouter directly from the browser with the signed-in user's own encrypted OpenRouter key after the local safety router runs. For desktop/Tailscale use, the existing local API server can still use the server-owned `.env` OpenRouter key.
+For GitHub/static use, the Coach can call OpenRouter directly from the browser with the signed-in user's own encrypted OpenRouter key. For desktop/Tailscale use, the existing local API server can still use the server-owned `.env` OpenRouter key.
 
 ### GitHub Pages Sharing
 
@@ -161,7 +161,7 @@ Render free services can sleep after idle time. Kin waits and retries while the 
 
 ### Sync Between Phone and PC
 
-Use the same Google account and the same vault passcode on each device. Journal, chat messages, goals, start sessions, weekly reviews, check-ins, memory, safety plan, tool progress, app lock settings, and user OpenRouter settings are included in the encrypted vault.
+Use the same Google account and the same vault passcode on each device. Journal, chat messages, goals, start sessions, weekly reviews, check-ins, memory, tool progress, app lock settings, and user OpenRouter settings are included in the encrypted vault.
 
 Auto sync uploads local changes shortly after edits and checks Drive when Kin opens, reconnects, comes back into view, and on the selected interval. If the Privacy -> Google Drive sync panel says `Needs Google` or `Refresh needed`, tap `Sync now` once to refresh the temporary browser Drive token.
 
@@ -216,12 +216,10 @@ Default OpenRouter role routing:
 
 | Kin role | Default model |
 | --- | --- |
-| Safety classification backup | `google/gemini-3.1-flash-lite` |
 | Normal AI coach | `anthropic/claude-haiku-4.5` |
 | ADHD task support | `google/gemini-3.1-flash-lite` |
 | Goal tracking / reminders | `google/gemini-3.1-flash-lite` |
 | Deep emotional support | `anthropic/claude-sonnet-4.5` with `anthropic/claude-haiku-4.5` as fallback |
-| Crisis handling | Safety Router, not normal chat |
 | Weekly summaries | `google/gemini-3.1-flash-lite` |
 | App naming, journaling, insight summaries | `google/gemini-3.1-flash-lite` |
 
@@ -236,9 +234,9 @@ The browser will call your API at `/api/health`, `/api/chat`, and `/api/adhd/tas
 
 If an OpenRouter key was pasted into a chat, rotate it in the OpenRouter dashboard and update `.env` with the new key. Keep a spending limit enabled on the OpenRouter account and choose a model slug that fits the cost/quality tradeoff you want for personal use. The app status badge shows `OpenRouter`, `Demo`, or `Offline` so you can tell what mode is active.
 
-## Safety
+## Support Resources
 
-The safety router runs before normal coach responses in both the browser and API. The server uses deterministic rules first and can ask Gemini Flash-Lite for a backup classification only when deterministic rules did not already pause chat. If self-harm, suicide, violence, abuse, psychosis, mania, overdose, or emergency language is detected, Kin pauses normal AI coaching and opens the safety flow.
+Kin keeps a static Support page for human crisis and emergency resource references. It does not classify chat or check-in text, pause AI coaching, or operate as a crisis service.
 
 If someone might hurt themselves or someone else, use real-time human help. In the U.S., call or text **988**, use **988lifeline.org** chat, or call emergency services for immediate danger.
 
@@ -266,7 +264,7 @@ Each user should bring their own Google account, vault passcode, and OpenRouter 
 ## Implemented MVP Features
 
 - Google sign-in gate for private Drive vault use.
-- Persistent SOS and crisis resource access.
+- Static Support page with crisis and emergency resource references.
 - Daily mood, anxiety, stress, energy, and sleep check-ins.
 - Constrained AI coach with diagnosis, medication, and therapy-replacement boundaries.
 - Data-driven CBT, ACT, grounding, breathing, sleep, rumination, behavioral activation, self-compassion, and communication tools.

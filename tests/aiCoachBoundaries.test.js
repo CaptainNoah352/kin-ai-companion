@@ -27,9 +27,9 @@ test("AI refuses therapy replacement safely", () => {
   assert.match(reply.content, /cannot replace professional care/i);
 });
 
-test("AI routes imminent self-harm to safety flow", () => {
+test("AI no longer returns a safety-flow block for self-harm language", () => {
   const reply = createCoachReply({ text: "I'm going to hurt myself tonight." });
-  assert.equal(reply.blocked, true);
-  assert.equal(reply.safety.level, "imminent");
-  assert.match(reply.content, /cannot continue normal coaching/i);
+  assert.equal(reply.blocked, undefined);
+  assert.equal(reply.safety, undefined);
+  assert.match(reply.content, /useful next step/i);
 });

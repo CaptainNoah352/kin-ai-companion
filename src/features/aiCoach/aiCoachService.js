@@ -1,4 +1,3 @@
-import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "../safety/safetyRouter.js";
 import { appSpaceIds, normalizeAppSpace } from "../appSpaces/appSpaceService.js";
 import {
   buildModeSuggestion,
@@ -25,18 +24,12 @@ export function createCoachReply({
   mood,
   latestCheckIn,
   memory,
-  region = "US",
   supportModes,
   manualChatMode = "Support",
   suggestedChatMode,
   activeAppSpace = appSpaceIds.wellness,
   bridgeContext,
 }) {
-  const safety = classifySafety(text, { source: "ai_chat" });
-  if (shouldPauseForSafety(safety)) {
-    return buildSafetyResponse(safety, region);
-  }
-
   const modeSuggestion = buildModeSuggestion(text, { manualChatMode, latestCheckIn });
   const resolvedSupportModes = Array.isArray(supportModes) && supportModes.length ? supportModes : modeSuggestion.modes;
   const resolvedSuggestedChatMode = suggestedChatMode || modeSuggestion.suggestedChatMode;
@@ -47,7 +40,6 @@ export function createCoachReply({
       role: "assistant",
       content:
         "I cannot diagnose you or tell you whether you have a condition. A useful next step is to track what you are noticing and share it with a licensed professional. Try a check-in or thought journal so you have clearer notes to bring to care.",
-      safetyLevel: safety.level,
       recommendedModuleIds: ["cbt-thought-record"],
       supportModes: resolvedSupportModes,
       suggestedChatMode: resolvedSuggestedChatMode,
@@ -60,7 +52,6 @@ export function createCoachReply({
       role: "assistant",
       content:
         "I cannot give medication instructions or tell you to start, stop, or change a dose. Please contact your prescriber, pharmacist, or urgent medical care if this feels time-sensitive. A useful next step here is to write down what changed, when it started, and any symptoms you want to ask about.",
-      safetyLevel: safety.level,
       recommendedModuleIds: ["cbt-thought-record"],
       supportModes: resolvedSupportModes,
       suggestedChatMode: resolvedSuggestedChatMode,
@@ -73,7 +64,6 @@ export function createCoachReply({
       role: "assistant",
       content:
         "I can support reflection and coping practice, but I am not a therapist and cannot replace professional care. A useful next step is to pick one thing you want help sorting out, then we can choose a tool such as grounding, a thought record, or communication rehearsal.",
-      safetyLevel: safety.level,
       recommendedModuleIds: ["grounding-54321"],
       supportModes: resolvedSupportModes,
       suggestedChatMode: resolvedSuggestedChatMode,
@@ -92,13 +82,12 @@ export function createCoachReply({
   return {
     role: "assistant",
     content: `${reflection}${modeLine}\n\nA useful next step: ${nextStep}\n\nTry this in the app: ${moduleLabel(module)}, because it gives you a structured way to work with this without needing to solve everything at once.`,
-    safetyLevel: safety.level,
     recommendedModuleIds,
-      supportModes: resolvedSupportModes,
-      suggestedChatMode: resolvedSuggestedChatMode,
-      activeAppSpace: resolvedAppSpace,
-      explanation: "Response uses reflection, one practical step, and an in-app tool recommendation.",
-    };
+    supportModes: resolvedSupportModes,
+    suggestedChatMode: resolvedSuggestedChatMode,
+    activeAppSpace: resolvedAppSpace,
+    explanation: "Response uses reflection, one practical step, and an in-app tool recommendation.",
+  };
 }
 
 export function recommendModules({ text = "", latestCheckIn } = {}) {

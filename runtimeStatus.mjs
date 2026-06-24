@@ -7,7 +7,6 @@ import { readStartupTaskStatus, startupTaskName } from "./startupTask.mjs";
 const execFileAsync = promisify(execFile);
 
 export const defaultAppPort = 988;
-export const safetyRouterVersion = "shared-rules-v1";
 
 function isIpv4(value) {
   if (typeof value !== "string") return false;
@@ -128,7 +127,7 @@ export function parseNetstatListeningAddresses(stdout, port = defaultAppPort) {
 }
 
 export function buildRuntimeStatus({
-  api = { ok: false, ai: "offline", safetyRouter: safetyRouterVersion },
+  api = { ok: false, ai: "offline" },
   appPort = defaultAppPort,
   lanIp = "",
   listeningAddresses = [],
@@ -161,7 +160,6 @@ export function buildRuntimeStatus({
     api: {
       ok: Boolean(api?.ok),
       ai: api?.ai || "offline",
-      safetyRouter: api?.safetyRouter || safetyRouterVersion,
       ...(api?.modelRoles ? { modelRoles: api.modelRoles } : {}),
     },
     app,
@@ -234,7 +232,7 @@ export async function readTailscaleStatus({ appPort = defaultAppPort, timeoutMs 
 }
 
 export async function getRuntimeStatus({
-  api = { ok: false, ai: "offline", safetyRouter: safetyRouterVersion },
+  api = { ok: false, ai: "offline" },
   appPort = defaultAppPort,
   desktop = null,
 } = {}) {

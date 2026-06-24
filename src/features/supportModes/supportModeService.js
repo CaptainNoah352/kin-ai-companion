@@ -6,7 +6,6 @@ export const supportModeIds = {
   procrastination: "procrastination",
   planning: "planning",
   grounding: "grounding",
-  crisis: "crisis",
 };
 
 export const requiredSupportModes = [
@@ -18,7 +17,6 @@ export const requiredSupportModes = [
   { id: "body_doubling", label: "Body Doubling" },
   { id: supportModeIds.grounding, label: "Calm / Grounding" },
   { id: "weekly_review", label: "Weekly Review" },
-  { id: supportModeIds.crisis, label: "Safety / Crisis Support" },
 ];
 
 export const chatModes = [
@@ -30,7 +28,6 @@ export const chatModes = [
 ];
 
 const modePriority = [
-  supportModeIds.crisis,
   supportModeIds.grounding,
   supportModeIds.procrastination,
   supportModeIds.taskStart,
@@ -48,16 +45,11 @@ const modeLabels = new Map([
   [supportModeIds.procrastination, "Unblock"],
   [supportModeIds.planning, "Goals"],
   [supportModeIds.grounding, "Calm"],
-  [supportModeIds.crisis, "Safety"],
 ]);
 
 export function classifySupportModes(text = "", { latestCheckIn } = {}) {
   const lower = normalizeText(text);
   const modes = new Set();
-
-  if (hasAny(lower, /\b(crisis|emergency|unsafe|danger|immediate help)\b/)) {
-    modes.add(supportModeIds.crisis);
-  }
 
   if (
     hasAny(
@@ -171,7 +163,6 @@ export function buildSupportModePromptContext({ supportModes = [], manualChatMod
 }
 
 function buildSuggestionCopy({ suggestedChatMode, modes, isManualAligned, emotionalAvoidance }) {
-  if (modes.includes(supportModeIds.crisis)) return "Safety support may fit best. Kin will pause normal coaching if risk is detected.";
   if (emotionalAvoidance) return "This looks like avoidance with pressure or feelings attached. Unblock can pair support with one tiny next step.";
   if (isManualAligned) return `${suggestedChatMode} fits what you wrote.`;
   return `${suggestedChatMode} may fit this message best.`;
