@@ -15,8 +15,6 @@ import { RemoteAccessPanel } from "./RemoteAccessPanel.jsx";
 export function PrivacyCenter({
   consent,
   setConsent,
-  profile,
-  onUpdateProfile,
   exportData,
   appLock,
   onEnableAppLock,
@@ -44,7 +42,6 @@ export function PrivacyCenter({
 
   return (
     <section className="privacy-layout">
-      <ProfileSettings profile={profile} onUpdateProfile={onUpdateProfile} />
       {setupChecklist}
       <RemoteAccessPanel />
       {syncCenter}
@@ -126,7 +123,7 @@ export function PrivacyCenter({
   );
 }
 
-function ProfileSettings({ profile, onUpdateProfile }) {
+export function ProfileSettings({ profile, onUpdateProfile }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(() => createStartupDraft({ profile }));
   const [message, setMessage] = useState("");

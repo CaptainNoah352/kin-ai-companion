@@ -62,7 +62,7 @@ import {
   verifyAppLockPasscode,
 } from "./features/privacy/appLockService.js";
 import { deleteAllKinData, deleteJournalOnly, deleteMentalHealthContent } from "./features/privacy/dataDeletion.js";
-import { PrivacyCenter } from "./features/privacy/PrivacyCenter.jsx";
+import { PrivacyCenter, ProfileSettings } from "./features/privacy/PrivacyCenter.jsx";
 import { PrivacyLockScreen } from "./features/privacy/PrivacyLockScreen.jsx";
 import { buildTrendSummary } from "./features/progress/trendUtils.js";
 import { ProgressDashboard } from "./features/progress/ProgressDashboard.jsx";
@@ -123,6 +123,7 @@ const adhdNavItems = [
 ];
 
 const utilityNavItems = [
+  { id: "Profile", label: "Profile", icon: UserRound },
   { id: "Check In", label: "Check In", icon: Activity },
   { id: "Memory", label: "Memory", icon: UserRound },
   { id: "Safety", label: "Safety", icon: Shield },
@@ -130,7 +131,6 @@ const utilityNavItems = [
 ];
 
 const phoneUtilityNavItems = [
-  { id: "Privacy", label: "Profile", icon: UserRound, navKey: "Profile" },
   ...utilityNavItems,
   { id: "Privacy", label: "Remote", icon: Router, navKey: "Remote" },
 ];
@@ -638,19 +638,6 @@ export default function App() {
       [normalizedAppSpace]: tabId,
     }));
     setPhoneMoreOpen(false);
-  }
-
-  function openProfileSettings() {
-    if (typeof window !== "undefined") {
-      const scrollKey = getPageScrollKey(normalizedAppSpace, "Privacy");
-      const scrollMap = readStorage(storageKeys.pageScroll, {});
-      writeStorage(storageKeys.pageScroll, {
-        ...scrollMap,
-        [scrollKey]: 0,
-      });
-      window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
-    }
-    selectTab("Privacy");
   }
 
   function openTabInAppSpace(spaceId, tabId) {
@@ -1725,6 +1712,7 @@ export default function App() {
     ),
     Journal: <JournalCenter entries={journalEntries} setEntries={setJournalEntries} />,
     Memory: <MemoryCenter memory={memory} setMemory={setMemory} messages={combinedMessages} />,
+    Profile: <ProfileSettings profile={profile} onUpdateProfile={updateProfileSettings} />,
     Tools: (
       <InterventionRunner
         selectedModuleId={selectedModuleId}
@@ -1755,8 +1743,6 @@ export default function App() {
       <PrivacyCenter
         consent={consent}
         setConsent={setConsent}
-        profile={profile}
-        onUpdateProfile={updateProfileSettings}
         exportData={exportData}
         appLock={appLock}
         onEnableAppLock={enableAppLock}
@@ -1888,7 +1874,7 @@ export default function App() {
                     className={activeTab === item.id && !item.navKey ? "phone-more-item active" : "phone-more-item"}
                     type="button"
                     key={item.navKey || item.id}
-                    onClick={() => (item.navKey === "Profile" ? openProfileSettings() : selectTab(item.id))}
+                    onClick={() => selectTab(item.id)}
                   >
                     <Icon size={18} />
                     {item.label}
