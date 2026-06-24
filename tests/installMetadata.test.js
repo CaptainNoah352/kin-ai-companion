@@ -52,3 +52,9 @@ test("public setup files do not hardcode a personal Tailscale address", () => {
   assert.equal(publicSetupText.includes("100.121.182.118"), false);
   assert.equal(publicSetupText.includes("darkroom-alley.taild04360.ts.net"), false);
 });
+
+test("google oauth client id is available for GitHub Pages builds", async () => {
+  const { getGoogleClientId } = await import("../src/features/sync/googleAuthService.js");
+
+  assert.match(getGoogleClientId(), /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
+});

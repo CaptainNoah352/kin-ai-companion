@@ -4,11 +4,12 @@ const profileScope = "openid email profile";
 const signInScope = `${profileScope} ${driveScope}`;
 const googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
 const googleTokenTimeoutMs = 90000;
+const defaultGoogleClientId = "524721215499-7jl63p40vilprfhin56vr9k8as4s1mm5.apps.googleusercontent.com";
 
 let scriptPromise = null;
 
 export function getGoogleClientId() {
-  return import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
+  return import.meta.env?.VITE_GOOGLE_CLIENT_ID || defaultGoogleClientId;
 }
 
 export function isGoogleConfigured() {
