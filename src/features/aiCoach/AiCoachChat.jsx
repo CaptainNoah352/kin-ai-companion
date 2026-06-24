@@ -218,16 +218,22 @@ export function AiCoachChat({
       </div>
 
       {isPhone ? (
-        <label className="chat-mode-select">
-          <span className="chat-mode-select__label">Mode</span>
-          <select value={chatMode} onChange={(event) => onChatModeChange?.(event.target.value)} aria-label="Chat support mode">
-            {chatModes.map((mode) => (
-              <option key={mode.id} value={mode.id}>
-                {mode.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="chat-mode-bar">
+          <label className="chat-mode-select">
+            <span className="chat-mode-select__label">Mode</span>
+            <select value={chatMode} onChange={(event) => onChatModeChange?.(event.target.value)} aria-label="Chat support mode">
+              {chatModes.map((mode) => (
+                <option key={mode.id} value={mode.id}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="chat-reset-button" type="button" onClick={resetChat}>
+            <RotateCcw size={15} />
+            Reset
+          </button>
+        </div>
       ) : (
         <div className="chat-mode-selector" role="radiogroup" aria-label="Chat support mode">
           {chatModes.map((mode) => (
@@ -313,12 +319,14 @@ export function AiCoachChat({
         </button>
       </form>
 
-      <div className="coach-footer">
-        <button className="ghost-button ghost-button--inline" type="button" onClick={resetChat}>
-          <RotateCcw size={16} />
-          Reset chat
-        </button>
-      </div>
+      {!isPhone && (
+        <div className="coach-footer">
+          <button className="ghost-button ghost-button--inline" type="button" onClick={resetChat}>
+            <RotateCcw size={16} />
+            Reset chat
+          </button>
+        </div>
+      )}
     </section>
   );
 }

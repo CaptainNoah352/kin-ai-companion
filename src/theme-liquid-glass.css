@@ -850,12 +850,37 @@ input[type="radio"] {
   min-height: 40px;
 }
 
-/* compact mode menu (replaces the chip row on phone) */
+/* compact mode menu + reset on one row (phone) */
+.chat-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chat-reset-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-row);
+  color: var(--space-accent-text);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
+}
+.chat-reset-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
 .chat-mode-select {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  align-self: flex-start;
   max-width: 100%;
 }
 .chat-mode-select__label {
