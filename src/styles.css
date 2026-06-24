@@ -3652,11 +3652,24 @@ button:disabled {
   }
 
   .phone-shell .task-bottom-actions {
-    margin-right: -14px;
-    margin-left: -14px;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    margin-right: 0;
+    margin-left: 0;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .phone-shell .task-bottom-actions button {
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--phone-touch-target);
+    padding: 8px;
+    white-space: normal;
+    text-align: center;
   }
 
   .phone-shell .review-summary-grid {
@@ -3997,5 +4010,677 @@ button:disabled {
 
   .lock-actions .sos-button {
     min-height: 54px;
+  }
+}
+
+/* Calm premium visual and interaction upgrade. */
+:root {
+  --bg: #eef5f3;
+  --surface: #ffffff;
+  --surface-soft: #eef8f5;
+  --surface-cool: #f7fbfa;
+  --surface-glass: rgba(255, 255, 255, 0.82);
+  --ink: #111c19;
+  --muted: #5f6e6a;
+  --line: #d8e4e1;
+  --line-strong: #abc6bf;
+  --pine: #064a3f;
+  --pine-dark: #022f2a;
+  --teal: #168a83;
+  --teal-soft: #ddf4f0;
+  --amber: #bd8832;
+  --amber-soft: #fff3d6;
+  --coral: #ee615b;
+  --coral-dark: #a9322f;
+  --space-accent: var(--teal);
+  --space-accent-strong: var(--pine);
+  --space-accent-soft: var(--teal-soft);
+  --space-accent-faint: rgba(22, 138, 131, 0.12);
+  --space-accent-shadow: rgba(22, 138, 131, 0.2);
+  --shadow: 0 18px 44px rgba(15, 42, 37, 0.1);
+  --shadow-soft: 0 10px 24px rgba(15, 42, 37, 0.08);
+  --shadow-lift: 0 20px 46px rgba(15, 42, 37, 0.14);
+  --focus: 0 0 0 3px rgba(22, 138, 131, 0.24);
+  --motion-fast: 140ms ease;
+  --motion: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.app-space--wellness {
+  --space-accent: #168a83;
+  --space-accent-strong: #064f43;
+  --space-accent-soft: #ddf4f0;
+  --space-accent-faint: rgba(22, 138, 131, 0.12);
+  --space-accent-shadow: rgba(22, 138, 131, 0.22);
+}
+
+.app-space--adhd {
+  --space-accent: #6b7d2f;
+  --space-accent-strong: #46581f;
+  --space-accent-soft: #edf4d8;
+  --space-accent-faint: rgba(107, 125, 47, 0.14);
+  --space-accent-shadow: rgba(107, 125, 47, 0.22);
+}
+
+body {
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.34) 0%, transparent 32%),
+    linear-gradient(135deg, #e9f3f1 0%, #f7faf8 42%, #dbeae6 100%);
+}
+
+.app-shell {
+  position: relative;
+  gap: 20px;
+  padding: 18px;
+  isolation: isolate;
+}
+
+.app-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(115deg, rgba(6, 79, 67, 0.08), transparent 36%),
+    linear-gradient(155deg, transparent 58%, var(--space-accent-faint) 58%, transparent 82%),
+    linear-gradient(24deg, transparent 68%, rgba(189, 136, 50, 0.08) 68%, transparent 90%);
+}
+
+.sidebar {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, #073c34 0%, #022c27 100%);
+  box-shadow: 0 24px 60px rgba(2, 47, 42, 0.28);
+}
+
+.brand-mark,
+.phone-install-hint__icon,
+.home-action-row__icon,
+.coach-memory-card__icon,
+.message-avatar {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.brand-mark {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+}
+
+.app-space-switcher {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.app-space-tab {
+  color: rgba(255, 255, 255, 0.72);
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.app-space-tab.active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(237, 247, 244, 0.9));
+  color: var(--space-accent-strong);
+}
+
+.app-space-tab:active,
+.nav-item:active,
+.phone-nav-item:active,
+.phone-more-item:active,
+.home-action-row:active,
+.primary-button:active,
+.secondary-button:active,
+.ghost-button:active,
+.danger-button:active,
+.icon-text-button:active,
+.global-start-button:active,
+.module-card button:active,
+.composer button:active,
+.task-bottom-actions button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.nav-item {
+  position: relative;
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+}
+
+.nav-item.active::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  content: "";
+  background: var(--space-accent-soft);
+}
+
+.mode-card,
+.rail-panel,
+.surface-section,
+.module-card,
+.status-card,
+.coach-preview,
+.recommended-tools,
+.hero-card,
+.wellness-shortcuts,
+.tool-list,
+.goal-list,
+.goal-support-panel,
+.start-card,
+.active-start-session,
+.start-history,
+.review-note,
+.recent-reviews,
+.task-capture-panel,
+.task-toolbar,
+.task-list-panel {
+  border-color: rgba(170, 197, 190, 0.74);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 253, 252, 0.98));
+  box-shadow: var(--shadow);
+}
+
+.workspace {
+  padding: 2px 0;
+}
+
+.topbar {
+  position: sticky;
+  top: 12px;
+  z-index: 8;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border: 1px solid rgba(216, 228, 225, 0.82);
+  border-radius: 8px;
+  background: rgba(248, 252, 251, 0.84);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.topbar h1 {
+  color: #0d1c18;
+  font-size: 30px;
+  font-weight: 860;
+}
+
+.topbar p {
+  color: #60736e;
+  font-weight: 640;
+}
+
+.api-status {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.global-start-button,
+.primary-button,
+.composer button {
+  background: linear-gradient(180deg, var(--space-accent-strong), #023d34);
+  box-shadow: 0 12px 24px var(--space-accent-shadow);
+}
+
+.app-space--adhd .global-start-button,
+.app-space--adhd .primary-button,
+.app-space--adhd .composer button {
+  background: linear-gradient(180deg, var(--space-accent-strong), #304015);
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.danger-button,
+.icon-text-button,
+.global-start-button,
+.module-card button,
+.recommended-tools > button,
+.tool-suggestion-row button,
+.task-bottom-actions button,
+.chat-mode-chip,
+.mode-suggestion button,
+.task-tab,
+.task-icon-button {
+  transition:
+    border-color var(--motion-fast),
+    background var(--motion-fast),
+    color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.primary-button:hover,
+.global-start-button:hover,
+.composer button:hover {
+  box-shadow: 0 16px 32px var(--space-accent-shadow);
+  transform: translateY(-1px);
+}
+
+.secondary-button:hover,
+.ghost-button:hover,
+.icon-text-button:hover,
+.tool-suggestion-row button:hover,
+.task-bottom-actions button:hover {
+  border-color: var(--line-strong);
+  background: white;
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.hero-card {
+  position: relative;
+  border-color: rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 249, 246, 0.84)),
+    linear-gradient(135deg, var(--space-accent-faint), transparent 54%);
+  box-shadow: 0 24px 58px rgba(15, 42, 37, 0.13);
+}
+
+.hero-card::after {
+  position: absolute;
+  right: 22px;
+  bottom: 20px;
+  width: min(38%, 280px);
+  height: 3px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--space-accent-faint), transparent);
+  transform: skewX(-18deg);
+}
+
+.hero-card h2 {
+  max-width: 680px;
+  color: #0e211c;
+  font-size: 34px;
+  font-weight: 880;
+  letter-spacing: 0;
+}
+
+.hero-card p {
+  color: #536760;
+}
+
+.hero-leaf {
+  position: relative;
+  z-index: 1;
+  color: var(--space-accent);
+  filter: drop-shadow(0 18px 22px var(--space-accent-shadow));
+  opacity: 0.68;
+}
+
+.home-action-row,
+.module-card,
+.coach-preview,
+.stat-pill,
+.review-summary-card,
+.goal-card,
+.start-history-row,
+.review-row,
+.task-row,
+.tool-row {
+  transition:
+    border-color var(--motion),
+    box-shadow var(--motion),
+    transform var(--motion),
+    background var(--motion);
+}
+
+.home-action-row:hover,
+.module-card:hover,
+.coach-preview:hover,
+.goal-card:hover,
+.start-history-row:hover,
+.review-row:hover,
+.task-row:hover,
+.tool-row:hover {
+  border-color: var(--space-accent);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
+}
+
+.home-action-row {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 251, 0.98));
+}
+
+.home-action-row__icon,
+.coach-memory-card__icon,
+.message-avatar,
+.tool-row svg,
+.module-card > svg,
+.review-summary-card svg {
+  color: var(--space-accent-strong);
+}
+
+.home-action-row__icon {
+  background: var(--space-accent-soft);
+}
+
+.home-action-row__action,
+.module-card button {
+  color: var(--space-accent-strong);
+}
+
+.wellness-shortcuts {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 251, 0.95)),
+    linear-gradient(90deg, var(--space-accent-faint), transparent);
+}
+
+.surface-section {
+  animation: surfaceIn 360ms var(--motion) both;
+}
+
+.coach-section {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 250, 0.98));
+}
+
+.chat-mode-chip {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.chat-mode-chip:hover {
+  border-color: var(--space-accent);
+  transform: translateY(-1px);
+}
+
+.chat-mode-chip.active,
+.task-tab.active {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.mode-suggestion,
+.coach-memory-card,
+.memory-draft-panel,
+.composer {
+  border-color: rgba(170, 197, 190, 0.78);
+  background: rgba(248, 252, 251, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+.chat-window {
+  padding: 10px 4px 6px;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.message {
+  animation: messageIn 240ms ease both;
+}
+
+.message-body {
+  border-color: rgba(177, 202, 196, 0.82);
+  background: linear-gradient(180deg, #ffffff, #f8fcfb);
+  box-shadow: 0 10px 24px rgba(15, 42, 37, 0.07);
+}
+
+.message.user .message-avatar {
+  background: var(--space-accent-strong);
+}
+
+.message.user .message-body {
+  border-color: var(--space-accent-faint);
+  background: linear-gradient(180deg, var(--space-accent-soft), rgba(255, 255, 255, 0.94));
+}
+
+.composer {
+  align-items: center;
+  padding: 10px;
+}
+
+.composer input {
+  min-height: 42px;
+  color: var(--ink);
+}
+
+.composer input::placeholder {
+  color: #7a8985;
+}
+
+.metric-ring__value {
+  stroke: var(--space-accent);
+  animation: ringDraw 640ms ease-out both;
+}
+
+.mini-progress div {
+  background: #dce8e5;
+}
+
+.mini-progress i {
+  background: linear-gradient(90deg, var(--space-accent-strong), var(--space-accent));
+  animation: progressFill 520ms ease-out both;
+}
+
+.stat-pill,
+.review-summary-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 250, 0.96));
+  box-shadow: var(--shadow-soft);
+}
+
+.stat-pill strong,
+.review-summary-card strong {
+  color: var(--space-accent-strong);
+}
+
+.goal-compose,
+.review-compose,
+.task-capture-panel {
+  background:
+    linear-gradient(180deg, rgba(248, 252, 251, 0.98), rgba(240, 249, 246, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.goal-card,
+.start-history-row,
+.review-row,
+.task-row {
+  background: rgba(250, 253, 252, 0.98);
+}
+
+.task-row--done {
+  border-color: rgba(22, 138, 131, 0.26);
+  animation: completionPulse 420ms ease-out both;
+}
+
+.task-icon-button:hover {
+  color: var(--space-accent-strong);
+  border-color: var(--space-accent);
+}
+
+.task-check {
+  accent-color: var(--space-accent);
+}
+
+.task-menu-panel,
+.task-bottom-actions {
+  box-shadow: var(--shadow-soft);
+}
+
+.phone-shell {
+  background:
+    linear-gradient(180deg, #eef6f4 0%, #f9fbfa 52%, #eef5f2 100%);
+}
+
+.phone-header,
+.phone-bottom-nav,
+.phone-more-panel {
+  border-color: rgba(193, 213, 208, 0.88);
+  background: rgba(248, 252, 251, 0.9);
+  backdrop-filter: blur(18px);
+}
+
+.phone-brand {
+  color: var(--space-accent-strong);
+}
+
+.phone-wellness-button,
+.phone-nav-item,
+.phone-more-item {
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.phone-wellness-button.active,
+.phone-nav-item.active,
+.phone-more-item.active {
+  background: var(--space-accent-soft);
+  color: var(--space-accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.phone-nav-item.active {
+  position: relative;
+}
+
+.phone-nav-item.active::before {
+  position: absolute;
+  top: 5px;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  content: "";
+  background: var(--space-accent);
+}
+
+.phone-install-hint {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.phone-shell .surface-section,
+.phone-shell .hero-card,
+.phone-shell .status-card,
+.phone-shell .module-card,
+.phone-shell .coach-preview,
+.phone-shell .recommended-tools,
+.phone-shell .rail-panel,
+.phone-shell .safety-flow {
+  box-shadow: var(--shadow-soft);
+}
+
+@keyframes surfaceIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progressFill {
+  from {
+    transform: scaleX(0.18);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+@keyframes ringDraw {
+  from {
+    stroke-dashoffset: 30;
+    opacity: 0.55;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes completionPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--space-accent-shadow);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(22, 138, 131, 0);
+  }
+}
+
+@media (max-width: 700px) {
+  .phone-shell {
+    --phone-gutter: 12px;
+  }
+
+  .phone-header {
+    box-shadow: 0 12px 30px rgba(15, 42, 37, 0.08);
+  }
+
+  .phone-shell .hero-card {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 248, 0.94)),
+      linear-gradient(135deg, var(--space-accent-faint), transparent 68%);
+  }
+
+  .phone-shell .hero-card::after {
+    display: none;
+  }
+
+  .phone-shell .home-action-row:hover,
+  .phone-shell .module-card:hover,
+  .phone-shell .coach-preview:hover,
+  .phone-shell .goal-card:hover,
+  .phone-shell .task-row:hover {
+    transform: none;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .phone-shell .home-action-row__action {
+    color: var(--space-accent-strong);
+  }
+
+  .phone-shell--coach .composer,
+  .phone-shell--chat .composer {
+    box-shadow: 0 -12px 26px rgba(15, 42, 37, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .surface-section,
+  .message,
+  .mini-progress i,
+  .metric-ring__value,
+  .task-row--done {
+    animation: none !important;
   }
 }

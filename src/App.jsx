@@ -226,6 +226,7 @@ export default function App() {
   const normalizedAppLock = useMemo(() => createDefaultAppLock(appLock), [appLock]);
   const isPhoneShell = useMediaQuery("(max-width: 700px)");
   const normalizedAppSpace = normalizeAppSpace(activeAppSpace);
+  const appSpaceClass = `app-space--${normalizedAppSpace}`;
   const activeAppMeta = appSpaceMeta[normalizedAppSpace];
   const navItems = appSpaceNavItems[normalizedAppSpace];
   const messages = normalizedAppSpace === appSpaceIds.adhd ? adhdMessages : wellnessMessages;
@@ -1659,7 +1660,7 @@ export default function App() {
   if (isPhoneShell) {
     const showInstallHint = shouldShowPhoneInstallHint({ dismissed: installHintDismissed });
     return (
-      <main className={`phone-shell phone-shell--${slugify(activeTab)}`}>
+      <main className={`phone-shell phone-shell--${slugify(activeTab)} ${appSpaceClass}`}>
         <header className="phone-header">
           <div className="phone-brand">
             <Leaf size={23} />
@@ -1742,7 +1743,7 @@ export default function App() {
   }
 
   return (
-    <main className={activeTab === "Home" ? "app-shell" : "app-shell app-shell--focused"}>
+    <main className={`${activeTab === "Home" ? "app-shell" : "app-shell app-shell--focused"} ${appSpaceClass}`}>
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
