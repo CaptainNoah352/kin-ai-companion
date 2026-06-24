@@ -189,13 +189,14 @@ To connect a real model through OpenRouter, copy `.env.example` to `.env` and se
 ```text
 OPENROUTER_API_KEY=your_key_here
 OPENROUTER_MODEL=your_openrouter_model_slug
+OPENROUTER_TASK_MODEL=openrouter/free
 OPENROUTER_SITE_URL=http://127.0.0.1:988
 OPENROUTER_APP_NAME=Kin Mental Wellness Companion
 ```
 
 Then restart `npm.cmd run server`.
 
-Kin keeps the OpenRouter key on the local API server, not in the browser. If OpenRouter is not configured, the server can still use the optional OpenAI fallback variables from `.env.example`, or it will remain in demo mode.
+Kin keeps the OpenRouter key on the local API server, not in the browser. `OPENROUTER_MODEL` is used for normal chat, while the task creator defaults to `OPENROUTER_TASK_MODEL=openrouter/free`. If OpenRouter is not configured, the server can still use the optional OpenAI fallback variables from `.env.example`, or it will remain in demo mode.
 
 For a GitHub Pages beta, deploy `server.mjs` behind your own HTTPS origin and set:
 

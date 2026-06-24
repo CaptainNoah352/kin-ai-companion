@@ -1,6 +1,7 @@
 import { normalizeBreakdownResponse, normalizeSpiciness } from "./adhdTaskService.js";
 
 const openRouterApiUrl = "https://openrouter.ai/api/v1/chat/completions";
+export const taskBreakdownOpenRouterModel = "openrouter/free";
 
 export async function createBrowserTaskBreakdown({ task, spiciness, userOpenRouter }) {
   if (!userOpenRouter?.apiKey) {
@@ -16,7 +17,7 @@ export async function createBrowserTaskBreakdown({ task, spiciness, userOpenRout
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: userOpenRouter.model || "openai/gpt-4o-mini",
+      model: taskBreakdownOpenRouterModel,
       messages: buildTaskBreakdownMessages({ task, spiciness }),
       response_format: { type: "json_object" },
     }),

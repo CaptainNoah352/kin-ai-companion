@@ -11,7 +11,7 @@ import { classifyCoachBoundary, createCoachReply, recommendModules } from "./src
 import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "./src/features/safety/safetyRouter.js";
 import { buildAppSpacePromptContext } from "./src/features/appSpaces/appSpaceService.js";
 import { normalizeBreakdownResponse, normalizeSpiciness } from "./src/features/adhdTasks/adhdTaskService.js";
-import { buildTaskBreakdownMessages } from "./src/features/adhdTasks/taskBreakdownClient.js";
+import { buildTaskBreakdownMessages, taskBreakdownOpenRouterModel } from "./src/features/adhdTasks/taskBreakdownClient.js";
 import { buildModeSuggestion, buildSupportModePromptContext } from "./src/features/supportModes/supportModeService.js";
 import { getRuntimeStatus, safetyRouterVersion } from "./runtimeStatus.mjs";
 
@@ -267,7 +267,7 @@ async function openRouterTaskBreakdown({ task, spiciness }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL,
+      model: process.env.OPENROUTER_TASK_MODEL || taskBreakdownOpenRouterModel,
       messages: buildTaskBreakdownMessages({ task, spiciness }),
       response_format: { type: "json_object" },
     }),
