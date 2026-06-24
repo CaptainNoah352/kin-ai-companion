@@ -24,6 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
+import { shouldUseLocalApi } from "./lib/runtimeMode.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
 import { AdhdTasksCenter } from "./features/adhdTasks/AdhdTasksCenter.jsx";
@@ -261,6 +262,10 @@ export default function App() {
   useEffect(() => {
     if (userOpenRouter.apiKey) {
       setApiMode("openrouter-user");
+      return;
+    }
+    if (!shouldUseLocalApi()) {
+      setApiMode("demo");
       return;
     }
     fetch("/api/health")

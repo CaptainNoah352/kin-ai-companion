@@ -99,16 +99,29 @@ To enable this path:
 2. Add your app origin to Authorized JavaScript origins, such as:
    - `http://127.0.0.1:988`
    - `https://<your-magicdns-name>.<your-tailnet>.ts.net`
-   - your GitHub Pages or hosted HTTPS origin, if you publish one
+   - `https://<your-github-username>.github.io`, if you publish on GitHub Pages
 3. Copy `.env.example` to `.env` and set:
 
 ```text
 VITE_GOOGLE_CLIENT_ID=your_google_oauth_web_client_id
 ```
 
-No Google client secret belongs in this app. The OAuth client id is public. Users keep their own vault passcode and can save their own OpenRouter key inside the encrypted vault from Privacy -> Google Drive sync.
+No Google client secret belongs in this app. The OAuth client id is public. Users keep their own Google account, vault passcode, and optional OpenRouter key inside the encrypted vault from Privacy -> Google Drive sync.
 
 For GitHub/static use, the Coach can call OpenRouter directly from the browser with the signed-in user's own encrypted OpenRouter key after the local safety router runs. For desktop/Tailscale use, the existing local API server can still use the server-owned `.env` OpenRouter key.
+
+### GitHub Pages Sharing
+
+The hosted GitHub Pages app is static. It does not run `server.mjs` and must not contain your private model API key.
+
+For the shared friend build:
+
+1. In GitHub repository settings, add an Actions/Pages variable named `VITE_GOOGLE_CLIENT_ID` with the public Google OAuth web client id.
+2. In Google Cloud, keep the OAuth app external and add `https://<your-github-username>.github.io` to Authorized JavaScript origins.
+3. Enable Pages with GitHub Actions. The included workflow builds with `VITE_KIN_HOSTING=github-pages`.
+4. Share the Pages URL, usually `https://<your-github-username>.github.io/<repo-name>/`.
+
+Every friend signs into their own Google account. Their app data syncs to their own encrypted Drive app-data vault. If they want real AI on GitHub Pages, they add their own OpenRouter key in Privacy -> Google Drive sync; otherwise Kin uses the built-in demo companion.
 
 ### Sync Between Phone and PC
 

@@ -89,3 +89,40 @@ test("app lock falls back to local API when crypto subtle is unavailable", async
     globalThis.fetch = originalFetch;
   }
 });
+
+test("hosted app lock does not call local API when crypto subtle is unavailable", async () => {
+  const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  const originalFetch = globalThis.fetch;
+  const previousMode = globalThis.__KIN_HOSTING_MODE__;
+  let fetchCalled = false;
+
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: {
+      getRandomValues: (bytes) => webcrypto.getRandomValues(bytes),
+    },
+  });
+
+  globalThis.__KIN_HOSTING_MODE__ = "github-pages";
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    return new Response(JSON.stringify({ error: "unexpected API call" }), { status: 500 });
+  };
+
+  try {
+    await assert.rejects(
+      () => createAppLock("hosted-passcode", { iterations: 1000 }),
+      /Web Crypto is required for app lock on the hosted app/,
+    );
+    assert.equal(fetchCalled, false);
+  } finally {
+    if (cryptoDescriptor) {
+      Object.defineProperty(globalThis, "crypto", cryptoDescriptor);
+    } else {
+      delete globalThis.crypto;
+    }
+    globalThis.fetch = originalFetch;
+    if (previousMode === undefined) delete globalThis.__KIN_HOSTING_MODE__;
+    else globalThis.__KIN_HOSTING_MODE__ = previousMode;
+  }
+});

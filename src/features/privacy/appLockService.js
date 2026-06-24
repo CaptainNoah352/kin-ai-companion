@@ -1,3 +1,5 @@
+import { shouldUseLocalApi } from "../../lib/runtimeMode.js";
+
 export const appLockTimeoutOptions = [
   { value: 5, label: "5 min" },
   { value: 10, label: "10 min" },
@@ -166,6 +168,9 @@ function canUseWebCrypto() {
 }
 
 async function deriveVerifierViaApi(passcode, salt, iterations) {
+  if (!shouldUseLocalApi()) {
+    throw new Error("Web Crypto is required for app lock on the hosted app.");
+  }
   const response = await fetch("/api/app-lock/derive", {
     method: "POST",
     headers: {
@@ -186,6 +191,9 @@ async function deriveVerifierViaApi(passcode, salt, iterations) {
 }
 
 async function verifyVerifierViaApi(passcode, appLock) {
+  if (!shouldUseLocalApi()) {
+    throw new Error("Web Crypto is required for app lock on the hosted app.");
+  }
   const response = await fetch("/api/app-lock/verify", {
     method: "POST",
     headers: {

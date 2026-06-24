@@ -11,15 +11,16 @@ test("web app manifest is installable and phone-friendly", () => {
 
   assert.equal(manifest.name, "Kin");
   assert.equal(manifest.short_name, "Kin");
-  assert.equal(manifest.start_url, "/");
-  assert.equal(manifest.scope, "/");
+  assert.equal(manifest.id, ".");
+  assert.equal(manifest.start_url, ".");
+  assert.equal(manifest.scope, ".");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.theme_color, "#064f43");
   assert.equal(manifest.background_color, "#f4f7f7");
   assert.equal(manifest.orientation, "portrait");
   assert.equal(manifest.prefer_related_applications, false);
-  assert.ok(manifest.icons.some((icon) => icon.src === "/kin-icon-192.png" && icon.purpose === "any"));
-  assert.ok(manifest.icons.some((icon) => icon.src === "/kin-maskable-512.png" && icon.purpose === "maskable"));
+  assert.ok(manifest.icons.some((icon) => icon.src === "kin-icon-192.png" && icon.purpose === "any"));
+  assert.ok(manifest.icons.some((icon) => icon.src === "kin-maskable-512.png" && icon.purpose === "maskable"));
 });
 
 test("index includes iOS and browser install metadata", () => {

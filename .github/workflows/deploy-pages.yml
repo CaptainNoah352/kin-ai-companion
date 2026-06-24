@@ -38,6 +38,8 @@ jobs:
         run: npm run build
         env:
           GITHUB_PAGES: "true"
+          VITE_KIN_HOSTING: "github-pages"
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

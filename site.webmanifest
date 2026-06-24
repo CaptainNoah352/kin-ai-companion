@@ -2,9 +2,9 @@
   "name": "Kin",
   "short_name": "Kin",
   "description": "Kin AI companion",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": ".",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "display_override": ["standalone", "browser"],
   "background_color": "#f4f7f7",
@@ -16,25 +16,25 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/kin-icon-192.png",
+      "src": "kin-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/kin-icon-512.png",
+      "src": "kin-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/kin-maskable-192.png",
+      "src": "kin-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/kin-maskable-512.png",
+      "src": "kin-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

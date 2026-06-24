@@ -18,6 +18,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { shouldUseLocalApi } from "../../lib/runtimeMode.js";
 import { createGoal } from "../goals/goalService.js";
 import {
   addSubtask,
@@ -69,7 +70,7 @@ export function AdhdTasksCenter({
     [state, filterCategory, hideCompleted],
   );
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) || state.tabs[0];
-  const realAiAvailable = Boolean(userOpenRouter?.apiKey) || apiMode === "openrouter" || apiMode === "openai";
+  const realAiAvailable = Boolean(userOpenRouter?.apiKey) || (shouldUseLocalApi() && (apiMode === "openrouter" || apiMode === "openai"));
 
   function applyChange(updater) {
     setTaskState((current) => {
@@ -458,6 +459,9 @@ function StatPill({ label, value }) {
 }
 
 async function fetchServerTaskBreakdown({ task, spiciness }) {
+  if (!shouldUseLocalApi()) {
+    throw new Error("Add a user-owned OpenRouter key in Privacy / Sync to use Magic breakdown on GitHub Pages.");
+  }
   const response = await fetch("/api/adhd/tasks/breakdown", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

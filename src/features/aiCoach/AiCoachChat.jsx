@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createCoachReply } from "./aiCoachService.js";
 import { buildCoachChatPayload } from "./chatPayload.js";
 import { createOpenRouterBrowserReply } from "./openRouterClient.js";
+import { shouldUseLocalApi } from "../../lib/runtimeMode.js";
 import {
   buildConversationSummary,
   getMemoryStats,
@@ -140,7 +141,20 @@ export function AiCoachChat({
     try {
       const data = userOpenRouter?.apiKey
         ? await createOpenRouterBrowserReply({ payload, userOpenRouter })
-        : await fetchServerCoachReply(payload);
+        : shouldUseLocalApi()
+          ? await fetchServerCoachReply(payload)
+          : createCoachReply({
+              text: trimmed,
+              mood,
+              latestCheckIn,
+              memory: payload.memory,
+              region,
+              supportModes: suggestion.modes,
+              manualChatMode: chatMode,
+              suggestedChatMode: suggestion.suggestedChatMode,
+              activeAppSpace,
+              bridgeContext,
+            });
       if (data.blocked || data.safety?.level === "high" || data.safety?.level === "imminent") {
         onSafety(trimmed, "ai_chat");
       }

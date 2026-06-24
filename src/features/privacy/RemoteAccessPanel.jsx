@@ -1,7 +1,13 @@
 import { AlertTriangle, Clock, Copy, ExternalLink, RefreshCw, Router, Server, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
+import { isGithubPagesRuntime } from "../../lib/runtimeMode.js";
 
 export function RemoteAccessPanel() {
+  if (isGithubPagesRuntime()) return <HostedAccessPanel />;
+  return <LocalRemoteAccessPanel />;
+}
+
+function LocalRemoteAccessPanel() {
   const [status, setStatus] = useState(null);
   const [loadState, setLoadState] = useState("loading");
   const [copiedLabel, setCopiedLabel] = useState("");
@@ -108,6 +114,36 @@ export function RemoteAccessPanel() {
           <p>If Tailscale gets a 100.x IP but another trusted device still times out, check Windows Firewall for inbound TCP 988.</p>
         </div>
       )}
+    </section>
+  );
+}
+
+function HostedAccessPanel() {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return (
+    <section className="surface-section remote-access-panel">
+      <div className="section-heading">
+        <div>
+          <h2>Hosted access</h2>
+          <p>GitHub Pages mode. Each person signs in with their own Google account and encrypted Drive vault.</p>
+        </div>
+        <ShieldCheck size={22} />
+      </div>
+
+      <div className="remote-status-grid" aria-live="polite">
+        <StatusPill icon={ShieldCheck} label="Hosting" value="GitHub Pages" />
+        <StatusPill icon={Server} label="Local API" value="Not required" />
+        <StatusPill icon={Router} label="Accounts" value="Google-owned" />
+        <StatusPill icon={Wifi} label="Sync" value="Drive vault" />
+      </div>
+
+      <div className="remote-recovery-panel">
+        <div>
+          <strong>Friend setup</strong>
+          <p>Share the public Kin URL. Friends use their own Google login, their own vault passcode, and their own optional OpenRouter key.</p>
+        </div>
+        <code>{origin || "GitHub Pages"}</code>
+      </div>
     </section>
   );
 }
