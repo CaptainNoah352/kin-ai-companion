@@ -138,8 +138,10 @@ export function AiCoachChat({
       bridgeContext,
     });
 
+    const usesKinApiBackend = shouldUseKinApiBackend();
+
     try {
-      const data = shouldUseKinApiBackend()
+      const data = usesKinApiBackend
           ? await fetchServerCoachReply(payload)
           : userOpenRouter?.apiKey
             ? await createOpenRouterBrowserReply({ payload, userOpenRouter })
@@ -171,6 +173,23 @@ export function AiCoachChat({
         },
       ]);
     } catch {
+      if (usesKinApiBackend) {
+        setMessages((current) => [
+          ...current,
+          {
+            role: "assistant",
+            content:
+              "Kin could not reach the AI server, so the real chat model did not respond. Check that the Kin API is running, then try again.",
+            safetyLevelAtGeneration: "none",
+            recommendedModuleIds: [],
+            supportModes: suggestion.modes,
+            suggestedChatMode: suggestion.suggestedChatMode,
+            activeAppSpace,
+          },
+        ]);
+        return;
+      }
+
       const fallback = createCoachReply({
         text: trimmed,
         mood,

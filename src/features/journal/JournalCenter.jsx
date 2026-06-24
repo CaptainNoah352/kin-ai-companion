@@ -1,4 +1,4 @@
-import { BookOpen, Plus, Save, Trash2 } from "lucide-react";
+import { BookOpen, Feather, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const emptyDraft = {
@@ -47,22 +47,32 @@ export function JournalCenter({ entries, setEntries }) {
 
   return (
     <section className="journal-layout">
-      <section className="surface-section">
-        <div className="section-heading">
+      <section className="surface-section diary-page">
+        <header className="diary-page__head">
           <div>
-            <h2>Journal</h2>
-            <p>Private local reflections stored in this browser.</p>
+            <span className="diary-page__date">{formatDiaryDate(new Date())}</span>
+            <h2>Today's page</h2>
           </div>
-          <BookOpen size={22} />
+          <Feather size={22} />
+        </header>
+
+        <div className="diary-sheet">
+          <textarea
+            className="diary-input"
+            value={draft.text}
+            onChange={(event) => updateDraft("text", event.target.value)}
+            placeholder="Dear diary, today I..."
+            aria-label="Diary entry"
+          />
         </div>
 
-        <div className="form-grid">
+        <div className="diary-meta">
           <label className="field-block">
             <span>Title</span>
             <input
               value={draft.title}
               onChange={(event) => updateDraft("title", event.target.value)}
-              placeholder="Optional title"
+              placeholder="Give today a title (optional)"
             />
           </label>
           <label className="field-block">
@@ -73,48 +83,37 @@ export function JournalCenter({ entries, setEntries }) {
               placeholder="Example: anxious, hopeful, tired"
             />
           </label>
-          <label className="field-block">
-            <span>Reflection</span>
-            <textarea
-              value={draft.text}
-              onChange={(event) => updateDraft("text", event.target.value)}
-              placeholder="Write what you want to get out of your head..."
-            />
-          </label>
         </div>
 
         <button className="primary-button primary-button--auto" type="button" onClick={saveEntry} disabled={!draft.text.trim()}>
           <Save size={17} />
-          Save entry
+          Save today's entry
         </button>
+        <p className="diary-page__note">Private local reflections, stored only in this browser.</p>
       </section>
 
       <section className="surface-section">
         <div className="section-heading">
           <div>
-            <h2>Saved entries</h2>
-            <p>Delete entries anytime from here or the privacy center.</p>
+            <h2>Past pages</h2>
+            <p>{sortedEntries.length ? `${sortedEntries.length} entr${sortedEntries.length === 1 ? "y" : "ies"} in your diary.` : "Your diary is waiting for its first page."}</p>
           </div>
-          <Plus size={22} />
+          <BookOpen size={22} />
         </div>
 
-        <div className="journal-entry-list">
+        <div className="diary-entry-list">
           {sortedEntries.length ? (
             sortedEntries.map((entry) => (
-              <article className="journal-entry" key={entry.id}>
-                <div>
-                  <strong>{entry.title}</strong>
-                  <small>
-                    {new Date(entry.createdAt).toLocaleString([], {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                    {entry.mood ? ` - ${entry.mood}` : ""}
-                  </small>
-                </div>
-                <p>{entry.text}</p>
+              <article className="diary-entry" key={entry.id}>
+                <header className="diary-entry__head">
+                  <span className="diary-entry__date">{formatDiaryDate(new Date(entry.createdAt))}</span>
+                  <span className="diary-entry__time">
+                    {new Date(entry.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                  {entry.mood ? <span className="diary-entry__mood">{entry.mood}</span> : null}
+                </header>
+                <strong className="diary-entry__title">{entry.title}</strong>
+                <p className="diary-entry__body">{entry.text}</p>
                 <button className="icon-text-button" type="button" onClick={() => deleteEntry(entry.id)}>
                   <Trash2 size={15} />
                   Delete
@@ -128,4 +127,14 @@ export function JournalCenter({ entries, setEntries }) {
       </section>
     </section>
   );
+}
+
+function formatDiaryDate(date) {
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }

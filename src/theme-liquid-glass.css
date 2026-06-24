@@ -846,6 +846,207 @@ input[type="radio"] {
 }
 
 /* ---------------------------------------------------------------------
+   8d. Journal — a diary you write in
+   --------------------------------------------------------------------- */
+.diary-page {
+  display: grid;
+  gap: 14px;
+}
+
+.diary-page__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.diary-page__head h2 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  color: var(--ink);
+}
+.diary-page__head > svg { color: var(--space-accent); flex: 0 0 auto; }
+.diary-page__date {
+  color: var(--space-accent-text);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.diary-input {
+  width: 100%;
+  min-height: 220px;
+  padding: 16px 16px 18px 48px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  resize: vertical;
+  color: #f2f7f4;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 30px;
+  background-color: var(--glass-row);
+  background-image:
+    linear-gradient(to right, transparent 36px, rgba(238, 97, 91, 0.3) 36px, rgba(238, 97, 91, 0.3) 37px, transparent 37px),
+    repeating-linear-gradient(to bottom, transparent 0 29px, rgba(255, 255, 255, 0.07) 29px, rgba(255, 255, 255, 0.07) 30px);
+  background-position: 0 0, 0 16px;
+  background-attachment: local;
+}
+.diary-input::placeholder {
+  color: #88a39a;
+  font-style: italic;
+  opacity: 1;
+}
+
+.diary-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.diary-page__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .diary-meta { grid-template-columns: 1fr; }
+  .diary-input { min-height: 200px; }
+}
+
+.diary-entry-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.diary-entry {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 14px 14px 14px 22px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-row);
+}
+.diary-entry::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(238, 97, 91, 0.34);
+}
+.diary-entry__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+.diary-entry__date { color: var(--space-accent-text); font-size: 13px; font-weight: 800; }
+.diary-entry__time { color: var(--muted); font-size: 12px; font-weight: 700; }
+.diary-entry__mood {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+  font-size: 11px;
+  font-weight: 800;
+}
+.diary-entry__title {
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 17px;
+}
+.diary-entry__body {
+  margin: 0;
+  color: #dde8e3;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+.diary-entry .icon-text-button { justify-self: start; }
+
+/* ---------------------------------------------------------------------
+   8e. Tools — see everything, tap to open
+   --------------------------------------------------------------------- */
+.tool-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.tool-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-row);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion),
+    box-shadow var(--motion),
+    transform var(--motion),
+    background var(--motion);
+}
+.tool-card:hover {
+  border-color: var(--space-accent);
+  box-shadow: var(--shadow-lift), 0 0 22px var(--space-accent-shadow);
+  transform: translateY(-2px);
+}
+.tool-card.selected {
+  border-color: var(--space-accent);
+  background: var(--space-accent-soft);
+}
+.tool-card__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--space-accent-soft);
+  color: var(--space-accent-text);
+}
+.tool-card__copy { display: grid; gap: 3px; min-width: 0; }
+.tool-card__copy strong { color: var(--ink); font-size: 15px; line-height: 1.2; }
+.tool-card__copy small { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.tool-card > svg:last-child { color: var(--space-accent-text); }
+
+.tool-runner__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-bottom: 14px;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-row);
+  color: var(--space-accent-text);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* on phone the picker is the whole screen — show every tool, no inner scroller */
+.tools-layout--phone {
+  grid-template-columns: 1fr;
+}
+.phone-shell .tools-layout--phone .tool-list {
+  max-height: none;
+  overflow: visible;
+}
+
+/* ---------------------------------------------------------------------
    9. Accessibility + performance fallbacks
    --------------------------------------------------------------------- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
