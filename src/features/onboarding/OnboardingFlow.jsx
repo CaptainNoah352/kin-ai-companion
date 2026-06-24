@@ -1,12 +1,15 @@
 import { Check, ChevronRight, Lock, ShieldCheck, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
+  buildCarePlanForGoals,
   buildStartupConsent,
   buildStartupProfile,
   createStartupDraft,
   genderIdentityOptions,
+  getStartupStepIds,
   goalOptions,
   pronounOptions,
+  supportStyleOptions,
 } from "./startupSetupService.js";
 
 const limitationCopy =
@@ -25,7 +28,6 @@ export function OnboardingFlow({
   onComplete,
 }) {
   const [stepIndex, setStepIndex] = useState(0);
-  const [passcodeComplete, setPasscodeComplete] = useState(!needsPasscodeSetup);
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
   const [error, setError] = useState("");
@@ -33,13 +35,12 @@ export function OnboardingFlow({
   const [draft, setDraft] = useState(() => createStartupDraft({ profile, consent }));
   const steps = useMemo(
     () =>
-      [
-        needsPasscodeSetup && !passcodeComplete ? "passcode" : null,
-        needsProfileSetup ? "profile" : null,
-        needsConsentSetup ? "boundaries" : null,
-        needsConsentSetup ? "consent" : null,
-      ].filter(Boolean),
-    [needsConsentSetup, needsPasscodeSetup, needsProfileSetup, passcodeComplete],
+      getStartupStepIds({
+        needsPasscodeSetup,
+        needsProfileSetup,
+        needsConsentSetup,
+      }),
+    [needsConsentSetup, needsPasscodeSetup, needsProfileSetup],
   );
   const currentStep = steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))];
   const totalSteps = Math.max(steps.length, 1);
@@ -74,7 +75,6 @@ export function OnboardingFlow({
       setIsSubmitting(false);
       return;
     }
-    setPasscodeComplete(true);
     setPasscode("");
     setConfirmPasscode("");
     setIsSubmitting(false);
@@ -89,7 +89,7 @@ export function OnboardingFlow({
     const result = await onComplete({
       consent: buildStartupConsent({ draft, existingConsent: consent, now }),
       profile: buildStartupProfile({ draft, existingProfile: profile, now }),
-      carePlan: buildCarePlan(draft.goals, now),
+      carePlan: buildCarePlanForGoals(draft.goals, now),
     });
     if (!result?.ok) {
       setError(result?.message || "Startup setup did not finish.");
@@ -106,6 +106,28 @@ export function OnboardingFlow({
         ? current.goals.filter((item) => item !== goal)
         : [...current.goals, goal],
     }));
+  }
+
+  if (!currentStep) {
+    return (
+      <main className="onboarding-shell">
+        <section className="onboarding-panel">
+          <div className="brand brand--large">
+            <div className="brand-mark">
+              <ShieldCheck size={28} />
+            </div>
+            <div>
+              <h1>Kin</h1>
+              <p>{email || "Private startup setup"}</p>
+            </div>
+          </div>
+          <div className="onboarding-step">
+            <h2>Opening Kin...</h2>
+            <p>Your vault setup is complete. Kin is loading the next screen.</p>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -265,6 +287,19 @@ export function OnboardingFlow({
                   onChange={(event) => setDraft({ ...draft, language: event.target.value })}
                 />
               </label>
+              <label className="field-block">
+                <span>Support style</span>
+                <select
+                  value={draft.supportStyle}
+                  onChange={(event) => setDraft({ ...draft, supportStyle: event.target.value })}
+                >
+                  {supportStyleOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <label className="field-block">
@@ -289,6 +324,59 @@ export function OnboardingFlow({
                   {goal.replaceAll("_", " ")}
                 </button>
               ))}
+            </div>
+
+            <div className="profile-preference-grid" aria-label="Accessibility preferences">
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.reduceMotion}
+                label="Reduce motion"
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    accessibilityPreferences: { ...draft.accessibilityPreferences, reduceMotion: value },
+                  })
+                }
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.largeText}
+                label="Large text"
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    accessibilityPreferences: { ...draft.accessibilityPreferences, largeText: value },
+                  })
+                }
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.highContrast}
+                label="High contrast"
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    accessibilityPreferences: { ...draft.accessibilityPreferences, highContrast: value },
+                  })
+                }
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.screenReaderOptimized}
+                label="Screen reader optimized"
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    accessibilityPreferences: { ...draft.accessibilityPreferences, screenReaderOptimized: value },
+                  })
+                }
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.simpleLanguage}
+                label="Simple language"
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    accessibilityPreferences: { ...draft.accessibilityPreferences, simpleLanguage: value },
+                  })
+                }
+              />
             </div>
           </div>
         )}
@@ -368,6 +456,15 @@ export function OnboardingFlow({
   );
 }
 
+function PreferenceToggle({ checked, label, onChange }) {
+  return (
+    <label className="profile-preference-toggle">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 function ConsentToggle({ checked, title, text, onChange }) {
   return (
     <label className="consent-row">
@@ -378,40 +475,4 @@ function ConsentToggle({ checked, title, text, onChange }) {
       </span>
     </label>
   );
-}
-
-function buildCarePlan(goals, now) {
-  return {
-    id: crypto.randomUUID(),
-    userId: "local-user",
-    focusAreas: goals.map((goal) => ({
-      id: crypto.randomUUID(),
-      label: goal,
-      severity: "unknown",
-    })),
-    goals: goals.map((goal) => ({
-      id: crypto.randomUUID(),
-      title: goal,
-      userLanguage: goal.replaceAll("_", " "),
-      status: "active",
-      createdAt: now,
-    })),
-    recommendedModuleIds: initialModulesForGoals(goals),
-    checkInFrequency: "daily",
-    reassessmentFrequencyDays: 14,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-function initialModulesForGoals(goals) {
-  const map = {
-    anxiety: ["grounding-54321", "breathing-box"],
-    low_mood: ["behavioral-activation", "self-compassion"],
-    stress: ["grounding-54321", "rumination-worry-window"],
-    sleep: ["sleep-reset"],
-    relationships: ["communication-rehearsal"],
-    self_esteem: ["self-compassion", "cbt-thought-record"],
-  };
-  return [...new Set(goals.flatMap((goal) => map[goal] || []))].slice(0, 4);
 }

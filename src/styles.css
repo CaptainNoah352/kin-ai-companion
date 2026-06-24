@@ -1977,6 +1977,40 @@ button:disabled {
   font-weight: 800;
 }
 
+.profile-settings-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.profile-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-preference-toggle {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-cool);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.profile-preference-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
 .sync-interval-field {
   margin: 0;
 }
@@ -3103,6 +3137,7 @@ button.api-status {
   .setup-checklist__items,
   .sync-status-grid,
   .profile-summary-grid,
+  .profile-preference-grid,
   .sync-auto-panel,
   .sync-conflict-panel,
   .form-grid--two,
@@ -3989,6 +4024,7 @@ button.api-status {
 
   .phone-shell .sync-status-grid,
   .phone-shell .profile-summary-grid,
+  .phone-shell .profile-preference-grid,
   .phone-shell .sync-conflict-panel,
   .phone-shell .sync-auto-panel,
   .phone-shell .trusted-vault-panel {

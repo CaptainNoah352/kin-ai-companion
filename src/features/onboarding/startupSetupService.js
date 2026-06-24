@@ -24,8 +24,29 @@ export const genderIdentityOptions = [
 
 export const goalOptions = ["anxiety", "low_mood", "stress", "sleep", "relationships", "self_esteem"];
 
+export const supportStyleOptions = [
+  { value: "gentle", label: "Gentle" },
+  { value: "direct", label: "Direct" },
+  { value: "structured", label: "Structured" },
+  { value: "encouraging", label: "Encouraging" },
+  { value: "simple", label: "Simple and concise" },
+];
+
 const pronounValues = new Set(pronounOptions.map((option) => option.value));
 const genderIdentityValues = new Set(genderIdentityOptions.map((option) => option.value));
+
+export function getStartupStepIds({
+  needsPasscodeSetup = false,
+  needsProfileSetup = false,
+  needsConsentSetup = false,
+} = {}) {
+  return [
+    needsPasscodeSetup ? "passcode" : null,
+    needsProfileSetup ? "profile" : null,
+    needsConsentSetup ? "boundaries" : null,
+    needsConsentSetup ? "consent" : null,
+  ].filter(Boolean);
+}
 
 export function createStartupDraft({ profile = {}, consent = {} } = {}) {
   const pronouns = normalizeStoredIdentityValue(profile.pronouns);
@@ -46,6 +67,7 @@ export function createStartupDraft({ profile = {}, consent = {} } = {}) {
     ageRange: profile.ageRange || "18_24",
     region: profile.region || "US",
     language: profile.language || "English",
+    supportStyle: profile.supportStyle || "gentle",
     goals: Array.isArray(profile.startupGoals) && profile.startupGoals.length ? profile.startupGoals : ["stress"],
     acceptedTerms: Boolean(consent.acceptedTerms),
     acceptedPrivacyPolicy: Boolean(consent.acceptedPrivacyPolicy),
@@ -84,6 +106,7 @@ export function buildStartupProfile({ draft, existingProfile = {}, now = new Dat
     ageRange: draft.ageRange,
     region: draft.region,
     language: draft.language,
+    supportStyle: draft.supportStyle,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     startupGoals: draft.goals,
     accessibilityPreferences: draft.accessibilityPreferences,
@@ -109,6 +132,30 @@ export function buildStartupConsent({ draft, existingConsent = {}, now = new Dat
   };
 }
 
+export function buildCarePlanForGoals(goals = [], now = new Date().toISOString()) {
+  return {
+    id: crypto.randomUUID(),
+    userId: "local-user",
+    focusAreas: goals.map((goal) => ({
+      id: crypto.randomUUID(),
+      label: goal,
+      severity: "unknown",
+    })),
+    goals: goals.map((goal) => ({
+      id: crypto.randomUUID(),
+      title: goal,
+      userLanguage: goal.replaceAll("_", " "),
+      status: "active",
+      createdAt: now,
+    })),
+    recommendedModuleIds: initialModulesForGoals(goals),
+    checkInFrequency: "daily",
+    reassessmentFrequencyDays: 14,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 function resolveIdentityValue(value, customValue) {
   if (value === "custom") return customValue.trim();
   if (value === "prefer_not_to_say") return "";
@@ -118,4 +165,16 @@ function resolveIdentityValue(value, customValue) {
 
 function normalizeStoredIdentityValue(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function initialModulesForGoals(goals) {
+  const map = {
+    anxiety: ["grounding-54321", "breathing-box"],
+    low_mood: ["behavioral-activation", "self-compassion"],
+    stress: ["grounding-54321", "rumination-worry-window"],
+    sleep: ["sleep-reset"],
+    relationships: ["communication-rehearsal"],
+    self_esteem: ["self-compassion", "cbt-thought-record"],
+  };
+  return [...new Set(goals.flatMap((goal) => map[goal] || []))].slice(0, 4);
 }

@@ -48,7 +48,11 @@ import { JournalCenter } from "./features/journal/JournalCenter.jsx";
 import { MemoryCenter } from "./features/memory/MemoryCenter.jsx";
 import { addMemorySummary, createDefaultMemory, setAutoChatSummary } from "./features/memory/memoryService.js";
 import { OnboardingFlow } from "./features/onboarding/OnboardingFlow.jsx";
-import { isStartupConsentComplete, isStartupProfileComplete } from "./features/onboarding/startupSetupService.js";
+import {
+  buildCarePlanForGoals,
+  isStartupConsentComplete,
+  isStartupProfileComplete,
+} from "./features/onboarding/startupSetupService.js";
 import {
   createAppLock,
   createDefaultAppLock,
@@ -1487,15 +1491,20 @@ export default function App() {
 
   async function updateProfileSettings(nextProfile) {
     try {
+      const nextCarePlan = haveGoalsChanged(profile?.startupGoals, nextProfile.startupGoals)
+        ? buildCarePlanForGoals(nextProfile.startupGoals || [], new Date().toISOString())
+        : carePlan;
       const nextKinData = {
         ...getCurrentKinDataSnapshot(),
         profile: nextProfile,
+        carePlan: nextCarePlan,
       };
       if (vaultPasscode) {
         await persistVault(vaultPasscode, userOpenRouter, nextKinData);
         rememberVaultSignature(nextKinData, userOpenRouter);
       }
       setProfile(nextProfile);
+      setCarePlan(nextCarePlan);
       setAuditEvents((events) => appendAuditEvent(events, "profile_updated"));
       return { ok: true, message: "Profile updated." };
     } catch (error) {
@@ -2438,6 +2447,13 @@ function SafetyView({ safetySignal, region, safetyPlan, onSavePlan, onClearFlow 
       <SafetyPlan plan={safetyPlan} onSave={onSavePlan} />
     </div>
   );
+}
+
+function haveGoalsChanged(left = [], right = []) {
+  const leftValues = Array.isArray(left) ? left : [];
+  const rightValues = Array.isArray(right) ? right : [];
+  if (leftValues.length !== rightValues.length) return true;
+  return leftValues.some((value, index) => value !== rightValues[index]);
 }
 
 function useStoredState(key, fallback) {

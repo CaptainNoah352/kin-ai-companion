@@ -4,7 +4,9 @@ import {
   buildStartupProfile,
   createStartupDraft,
   genderIdentityOptions,
+  goalOptions,
   pronounOptions,
+  supportStyleOptions,
 } from "../onboarding/startupSetupService.js";
 import { appLockTimeoutOptions, createDefaultAppLock } from "./appLockService.js";
 import { dataCategories, buildPrivacyExport, downloadJson } from "./dataExport.js";
@@ -173,6 +175,25 @@ function ProfileSettings({ profile, onUpdateProfile }) {
     setIsEditing(false);
   }
 
+  function toggleGoal(goal) {
+    setDraft((current) => ({
+      ...current,
+      goals: current.goals.includes(goal)
+        ? current.goals.filter((item) => item !== goal)
+        : [...current.goals, goal],
+    }));
+  }
+
+  function setAccessibilityPreference(key, value) {
+    setDraft((current) => ({
+      ...current,
+      accessibilityPreferences: {
+        ...current.accessibilityPreferences,
+        [key]: value,
+      },
+    }));
+  }
+
   return (
     <section className="surface-section profile-settings-card">
       <div className="section-heading">
@@ -190,6 +211,7 @@ function ProfileSettings({ profile, onUpdateProfile }) {
             <ProfileSummaryItem label="Pronouns" value={profile?.pronouns || "Prefer not to say"} />
             <ProfileSummaryItem label="Gender identity" value={formatIdentity(profile?.genderIdentity)} />
             <ProfileSummaryItem label="Region" value={formatRegion(profile?.region)} />
+            <ProfileSummaryItem label="Support style" value={formatSupportStyle(profile?.supportStyle)} />
           </div>
           {profile?.identityNotes && <p className="plain-copy">{profile.identityNotes}</p>}
           {message && <p className="form-success">{message}</p>}
@@ -280,6 +302,66 @@ function ProfileSettings({ profile, onUpdateProfile }) {
                 onChange={(event) => setDraft({ ...draft, language: event.target.value })}
               />
             </label>
+            <label className="field-block">
+              <span>Support style</span>
+              <select
+                value={draft.supportStyle}
+                onChange={(event) => setDraft({ ...draft, supportStyle: event.target.value })}
+              >
+                {supportStyleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div>
+            <p className="profile-settings-label">Focus areas</p>
+            <div className="choice-grid">
+              {goalOptions.map((goal) => (
+                <button
+                  className={draft.goals.includes(goal) ? "choice-chip selected" : "choice-chip"}
+                  key={goal}
+                  type="button"
+                  onClick={() => toggleGoal(goal)}
+                >
+                  {goal.replaceAll("_", " ")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="profile-settings-label">Accessibility preferences</p>
+            <div className="profile-preference-grid">
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.reduceMotion}
+                label="Reduce motion"
+                onChange={(value) => setAccessibilityPreference("reduceMotion", value)}
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.largeText}
+                label="Large text"
+                onChange={(value) => setAccessibilityPreference("largeText", value)}
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.highContrast}
+                label="High contrast"
+                onChange={(value) => setAccessibilityPreference("highContrast", value)}
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.screenReaderOptimized}
+                label="Screen reader optimized"
+                onChange={(value) => setAccessibilityPreference("screenReaderOptimized", value)}
+              />
+              <PreferenceToggle
+                checked={draft.accessibilityPreferences.simpleLanguage}
+                label="Simple language"
+                onChange={(value) => setAccessibilityPreference("simpleLanguage", value)}
+              />
+            </div>
           </div>
 
           <label className="field-block">
@@ -308,6 +390,15 @@ function ProfileSettings({ profile, onUpdateProfile }) {
   );
 }
 
+function PreferenceToggle({ checked, label, onChange }) {
+  return (
+    <label className="profile-preference-toggle">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 function ProfileSummaryItem({ label, value }) {
   return (
     <span className="profile-summary-item">
@@ -330,6 +421,11 @@ function formatRegion(value) {
     default: "Other",
   };
   return regions[value] || "Other";
+}
+
+function formatSupportStyle(value) {
+  const option = supportStyleOptions.find((item) => item.value === value);
+  return option?.label || "Gentle";
 }
 
 function PrivacyToggle({ label, checked, onClick }) {
