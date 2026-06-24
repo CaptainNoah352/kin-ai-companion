@@ -1,6 +1,7 @@
 import { Brain, RotateCcw, Send, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createCoachReply } from "./aiCoachService.js";
+import { normalizeChatHistory, starterMessages } from "./chatHistory.js";
 import { buildCoachChatPayload } from "./chatPayload.js";
 import { createOpenRouterBrowserReply } from "./openRouterClient.js";
 import { formatKinApiError, postKinApiJson } from "../../lib/kinApiClient.js";
@@ -9,15 +10,6 @@ import { buildConversationSummary, MEMORY_SUMMARY_MIN_LENGTH } from "../memory/m
 import { classifySafety, shouldPauseForSafety } from "../safety/safetyRouter.js";
 import { buildModeSuggestion, chatModes } from "../supportModes/supportModeService.js";
 import { parseInlineMarkdown } from "./richMessageText.js";
-
-const starterMessages = [
-  {
-    role: "assistant",
-    content:
-      "I am Kin. I can support reflection and coping tools, but I am AI support, not therapy. I do not diagnose, prescribe, or handle emergencies.",
-    recommendedModuleIds: [],
-  },
-];
 
 export function AiCoachChat({
   messages,
@@ -44,18 +36,25 @@ export function AiCoachChat({
   const isPhone = useMediaQuery("(max-width: 700px)");
   const endRef = useRef(null);
   const lastAutoSavedRef = useRef("");
-  const visibleMessages = messages.length ? messages : starterMessages;
-  const generatedSummary = useMemo(() => buildConversationSummary(messages), [messages]);
-  const hasUserMessage = messages.some((message) => message.role === "user");
-  const hasAssistantAfterUser = messages.some(
-    (message, index) => message.role === "assistant" && messages.slice(0, index).some((item) => item.role === "user"),
+  const chatMessages = useMemo(() => normalizeChatHistory(messages), [messages]);
+  const visibleMessages = chatMessages.length ? chatMessages : starterMessages;
+  const generatedSummary = useMemo(() => buildConversationSummary(chatMessages), [chatMessages]);
+  const hasUserMessage = chatMessages.some((message) => message.role === "user");
+  const hasAssistantAfterUser = chatMessages.some(
+    (message, index) => message.role === "assistant" && chatMessages.slice(0, index).some((item) => item.role === "user"),
   );
   const canAutoSaveMemory =
     hasUserMessage && hasAssistantAfterUser && generatedSummary.length >= MEMORY_SUMMARY_MIN_LENGTH;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isSending]);
+  }, [chatMessages, isSending]);
+
+  useEffect(() => {
+    if (chatMessages !== messages) {
+      setMessages(chatMessages);
+    }
+  }, [chatMessages, messages, setMessages]);
 
   // Auto-save the conversation to local memory in the background. One evolving
   // summary per chat (replaced as it grows), no manual save needed.
@@ -71,7 +70,7 @@ export function AiCoachChat({
 
   function resetChat() {
     lastAutoSavedRef.current = "";
-    setMessages(starterMessages);
+    setMessages([]);
   }
 
   async function sendMessage(text = input) {
@@ -106,7 +105,7 @@ export function AiCoachChat({
       emotionalAvoidance: suggestion.emotionalAvoidance,
       activeAppSpace,
     };
-    const nextMessages = [...visibleMessages, userMessage];
+    const nextMessages = [...chatMessages, userMessage];
     setMessages(nextMessages);
     setInput("");
     setIsSending(true);
