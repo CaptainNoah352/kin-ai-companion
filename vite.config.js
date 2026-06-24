@@ -7,6 +7,23 @@ const projectRoot = realpathSync(fileURLToPath(new URL(".", import.meta.url)));
 const githubPagesRepo = process.env.GITHUB_REPOSITORY?.split("/")[1] || "kin-ai-companion";
 const base = process.env.GITHUB_PAGES === "true" ? `/${githubPagesRepo}/` : "/";
 
+function kinHtmlEntryPlugin() {
+  const staticLoaderPattern =
+    /[ \t]*<!-- kin-static-loader-start -->[\s\S]*?<!-- kin-static-loader-end -->\r?\n?/g;
+
+  return {
+    name: "kin-html-entry",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        return html
+          .replace(staticLoaderPattern, "")
+          .replace("<!-- kin-vite-entry -->", '<script type="module" src="/src/main.jsx"></script>');
+      },
+    },
+  };
+}
+
 function getAllowedHosts() {
   const configured = process.env.KIN_ALLOWED_HOSTS || "";
   const hosts = configured
@@ -20,7 +37,16 @@ function getAllowedHosts() {
 export default defineConfig({
   root: projectRoot,
   base,
-  plugins: [react()],
+  plugins: [kinHtmlEntryPlugin(), react()],
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/[name].js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]",
+      },
+    },
+  },
   server: {
     port: 988,
     strictPort: true,

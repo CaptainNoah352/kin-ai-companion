@@ -28,8 +28,8 @@ test("index includes iOS and browser install metadata", () => {
   assert.match(html, /name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /name="apple-mobile-web-app-title" content="Kin"/);
   assert.match(html, /name="mobile-web-app-capable" content="yes"/);
-  assert.match(html, /rel="apple-touch-icon" sizes="180x180" href="\/kin-icon-180\.png"/);
-  assert.match(html, /rel="manifest" href="\/site\.webmanifest"/);
+  assert.match(html, /rel="apple-touch-icon" sizes="180x180" href="\/?kin-icon-180\.png"/);
+  assert.match(html, /rel="manifest" href="\/?site\.webmanifest"/);
 });
 
 test("install hint dismissal has a local storage key", () => {
