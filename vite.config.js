@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const projectRoot = realpathSync(fileURLToPath(new URL(".", import.meta.url)));
+const githubPagesRepo = process.env.GITHUB_REPOSITORY?.split("/")[1] || "kin-ai-companion";
+const base = process.env.GITHUB_PAGES === "true" ? `/${githubPagesRepo}/` : "/";
 
 function getAllowedHosts() {
   const configured = process.env.KIN_ALLOWED_HOSTS || "";
@@ -17,6 +19,7 @@ function getAllowedHosts() {
 
 export default defineConfig({
   root: projectRoot,
+  base,
   plugins: [react()],
   server: {
     port: 988,
