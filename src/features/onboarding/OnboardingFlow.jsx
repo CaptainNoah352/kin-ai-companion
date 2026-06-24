@@ -1,35 +1,103 @@
-import { Check, ChevronRight, Lock, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronRight, Lock, ShieldCheck, UserRound } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  buildStartupConsent,
+  buildStartupProfile,
+  createStartupDraft,
+  genderIdentityOptions,
+  goalOptions,
+  pronounOptions,
+} from "./startupSetupService.js";
 
 const limitationCopy =
   "This app provides mental health support, self-reflection, and evidence-informed coping tools. It is not a licensed therapist, medical provider, crisis service, or emergency service. It does not diagnose conditions, prescribe medication, or replace professional care.";
 
-export function OnboardingFlow({ onComplete }) {
-  const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState({
-    ageRange: "18_24",
-    region: "US",
-    language: "English",
-    goals: ["stress"],
-    acceptedTerms: false,
-    acceptedPrivacyPolicy: false,
-    aiDisclosureAccepted: false,
-    allowPersonalization: true,
-    allowAnalytics: false,
-    allowModelTraining: false,
-    allowCrisisContactUse: false,
-    accessibilityPreferences: {
-      reduceMotion: false,
-      largeText: false,
-      highContrast: false,
-      screenReaderOptimized: false,
-      simpleLanguage: false,
-    },
-  });
+export function OnboardingFlow({
+  email,
+  hasAppPasscode,
+  hasLocalVault,
+  needsPasscodeSetup,
+  needsProfileSetup,
+  needsConsentSetup,
+  profile,
+  consent,
+  onPasscodeSubmit,
+  onComplete,
+}) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const [passcodeComplete, setPasscodeComplete] = useState(!needsPasscodeSetup);
+  const [passcode, setPasscode] = useState("");
+  const [confirmPasscode, setConfirmPasscode] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [draft, setDraft] = useState(() => createStartupDraft({ profile, consent }));
+  const steps = useMemo(
+    () =>
+      [
+        needsPasscodeSetup && !passcodeComplete ? "passcode" : null,
+        needsProfileSetup ? "profile" : null,
+        needsConsentSetup ? "boundaries" : null,
+        needsConsentSetup ? "consent" : null,
+      ].filter(Boolean),
+    [needsConsentSetup, needsPasscodeSetup, needsProfileSetup, passcodeComplete],
+  );
+  const currentStep = steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))];
+  const totalSteps = Math.max(steps.length, 1);
+  const isNewPasscode = !hasAppPasscode;
+  const profileReady = Boolean(draft.displayName.trim() && draft.region && draft.language.trim());
+  const canContinue = currentStep === "profile" ? profileReady : true;
+  const canFinish =
+    draft.acceptedTerms &&
+    draft.acceptedPrivacyPolicy &&
+    draft.aiDisclosureAccepted &&
+    (!needsProfileSetup || profileReady);
 
-  const canContinue =
-    step < 2 ||
-    (draft.acceptedTerms && draft.acceptedPrivacyPolicy && draft.aiDisclosureAccepted);
+  async function submitPasscode(event) {
+    event.preventDefault();
+    if (isSubmitting) return;
+    if (passcode.length < 8) {
+      setError("Use at least 8 characters.");
+      return;
+    }
+    if (isNewPasscode && passcode !== confirmPasscode) {
+      setError("Passcodes do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+    const result = await onPasscodeSubmit(passcode);
+    if (!result?.ok) {
+      setError(result?.message || "Kin passcode setup did not finish.");
+      setPasscode("");
+      setConfirmPasscode("");
+      setIsSubmitting(false);
+      return;
+    }
+    setPasscodeComplete(true);
+    setPasscode("");
+    setConfirmPasscode("");
+    setIsSubmitting(false);
+    setStepIndex(0);
+  }
+
+  async function finish() {
+    if (isSubmitting || !canFinish) return;
+    setIsSubmitting(true);
+    setError("");
+    const now = new Date().toISOString();
+    const result = await onComplete({
+      consent: buildStartupConsent({ draft, existingConsent: consent, now }),
+      profile: buildStartupProfile({ draft, existingProfile: profile, now }),
+      carePlan: buildCarePlan(draft.goals, now),
+    });
+    if (!result?.ok) {
+      setError(result?.message || "Startup setup did not finish.");
+      setIsSubmitting(false);
+      return;
+    }
+    setIsSubmitting(false);
+  }
 
   function toggleGoal(goal) {
     setDraft((current) => ({
@@ -38,55 +106,6 @@ export function OnboardingFlow({ onComplete }) {
         ? current.goals.filter((item) => item !== goal)
         : [...current.goals, goal],
     }));
-  }
-
-  function finish() {
-    const now = new Date().toISOString();
-    onComplete({
-      consent: {
-        userId: "local-user",
-        acceptedTerms: draft.acceptedTerms,
-        acceptedPrivacyPolicy: draft.acceptedPrivacyPolicy,
-        aiDisclosureAccepted: draft.aiDisclosureAccepted,
-        allowPersonalization: draft.allowPersonalization,
-        allowAnalytics: draft.allowAnalytics,
-        allowModelTraining: draft.allowModelTraining,
-        allowCrisisContactUse: draft.allowCrisisContactUse,
-        createdAt: now,
-        updatedAt: now,
-      },
-      profile: {
-        id: "local-user",
-        ageRange: draft.ageRange,
-        region: draft.region,
-        language: draft.language,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        accessibilityPreferences: draft.accessibilityPreferences,
-        createdAt: now,
-        updatedAt: now,
-      },
-      carePlan: {
-        id: crypto.randomUUID(),
-        userId: "local-user",
-        focusAreas: draft.goals.map((goal) => ({
-          id: crypto.randomUUID(),
-          label: goal,
-          severity: "unknown",
-        })),
-        goals: draft.goals.map((goal) => ({
-          id: crypto.randomUUID(),
-          title: goal,
-          userLanguage: goal.replaceAll("_", " "),
-          status: "active",
-          createdAt: now,
-        })),
-        recommendedModuleIds: initialModulesForGoals(draft.goals),
-        checkInFrequency: "daily",
-        reassessmentFrequencyDays: 14,
-        createdAt: now,
-        updatedAt: now,
-      },
-    });
   }
 
   return (
@@ -98,25 +117,127 @@ export function OnboardingFlow({ onComplete }) {
           </div>
           <div>
             <h1>Kin</h1>
-            <p>AI-supported mental wellness companion</p>
+            <p>{email || "Private startup setup"}</p>
           </div>
         </div>
 
-        {step === 0 && (
+        {currentStep === "passcode" && (
           <div className="onboarding-step">
-            <h2>Support with clear boundaries.</h2>
-            <p>{limitationCopy}</p>
-            <div className="notice-strip">
-              <ShieldCheck size={20} />
-              Crisis resources stay visible. High-risk messages pause AI coaching.
+            <div className="startup-step-heading">
+              <Lock size={30} />
+              <span>
+                <h2>{isNewPasscode ? "Create your Kin passcode" : "Unlock your Kin vault"}</h2>
+                <p>
+                  This one passcode unlocks the app and encrypts the private vault. Set this up before entering profile
+                  details so your personal information is protected from the start.
+                </p>
+              </span>
             </div>
+
+            <form className="sync-unlock-panel" onSubmit={submitPasscode}>
+              <label className="field-block">
+                <span>{isNewPasscode ? "App and vault passcode" : "Passcode"}</span>
+                <input
+                  type="password"
+                  value={passcode}
+                  onChange={(event) => setPasscode(event.target.value)}
+                  placeholder="Use at least 8 characters"
+                  autoComplete={isNewPasscode ? "new-password" : "current-password"}
+                />
+              </label>
+              {isNewPasscode && (
+                <label className="field-block">
+                  <span>Confirm passcode</span>
+                  <input
+                    type="password"
+                    value={confirmPasscode}
+                    onChange={(event) => setConfirmPasscode(event.target.value)}
+                    placeholder="Re-enter passcode"
+                    autoComplete="new-password"
+                  />
+                </label>
+              )}
+              {error && <p className="lock-error">{error}</p>}
+              <button className="primary-button primary-button--auto" type="submit" disabled={!passcode || isSubmitting}>
+                <Lock size={17} />
+                {isSubmitting ? "Setting up..." : isNewPasscode ? "Set up vault" : "Unlock vault"}
+              </button>
+            </form>
+
+            <p className="plain-copy">
+              {hasLocalVault
+                ? "Kin found a local encrypted vault. Use the same passcode to unlock it."
+                : "Google may ask for Drive access so Kin can create or restore the encrypted vault."}
+            </p>
           </div>
         )}
 
-        {step === 1 && (
+        {currentStep === "profile" && (
           <div className="onboarding-step">
-            <h2>Your starting point</h2>
+            <div className="startup-step-heading">
+              <UserRound size={30} />
+              <span>
+                <h2>Create your profile</h2>
+                <p>Kin uses this to address you respectfully and personalize support. Identity details are optional.</p>
+              </span>
+            </div>
+
             <div className="form-grid form-grid--two">
+              <label className="field-block">
+                <span>Chosen name</span>
+                <input
+                  type="text"
+                  value={draft.displayName}
+                  onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
+                  placeholder="What should Kin call you?"
+                  autoComplete="given-name"
+                />
+              </label>
+              <label className="field-block">
+                <span>Pronouns</span>
+                <select value={draft.pronouns} onChange={(event) => setDraft({ ...draft, pronouns: event.target.value })}>
+                  {pronounOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {draft.pronouns === "custom" && (
+                <label className="field-block">
+                  <span>Custom pronouns</span>
+                  <input
+                    type="text"
+                    value={draft.customPronouns}
+                    onChange={(event) => setDraft({ ...draft, customPronouns: event.target.value })}
+                    placeholder="Enter your pronouns"
+                  />
+                </label>
+              )}
+              <label className="field-block">
+                <span>Gender identity</span>
+                <select
+                  value={draft.genderIdentity}
+                  onChange={(event) => setDraft({ ...draft, genderIdentity: event.target.value })}
+                >
+                  {genderIdentityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {draft.genderIdentity === "custom" && (
+                <label className="field-block">
+                  <span>Custom gender identity</span>
+                  <input
+                    type="text"
+                    value={draft.customGenderIdentity}
+                    onChange={(event) => setDraft({ ...draft, customGenderIdentity: event.target.value })}
+                    placeholder="Enter your identity"
+                  />
+                </label>
+              )}
               <label className="field-block">
                 <span>Age range</span>
                 <select value={draft.ageRange} onChange={(event) => setDraft({ ...draft, ageRange: event.target.value })}>
@@ -136,9 +257,28 @@ export function OnboardingFlow({ onComplete }) {
                   <option value="default">Other</option>
                 </select>
               </label>
+              <label className="field-block">
+                <span>Language</span>
+                <input
+                  type="text"
+                  value={draft.language}
+                  onChange={(event) => setDraft({ ...draft, language: event.target.value })}
+                />
+              </label>
             </div>
+
+            <label className="field-block">
+              <span>Anything Kin should know about referring to you?</span>
+              <textarea
+                value={draft.identityNotes}
+                onChange={(event) => setDraft({ ...draft, identityNotes: event.target.value })}
+                placeholder="Optional"
+                rows={3}
+              />
+            </label>
+
             <div className="choice-grid">
-              {["anxiety", "low_mood", "stress", "sleep", "relationships", "self_esteem"].map((goal) => (
+              {goalOptions.map((goal) => (
                 <button
                   className={draft.goals.includes(goal) ? "choice-chip selected" : "choice-chip"}
                   key={goal}
@@ -153,7 +293,18 @@ export function OnboardingFlow({ onComplete }) {
           </div>
         )}
 
-        {step === 2 && (
+        {currentStep === "boundaries" && (
+          <div className="onboarding-step">
+            <h2>Support with clear boundaries.</h2>
+            <p>{limitationCopy}</p>
+            <div className="notice-strip">
+              <ShieldCheck size={20} />
+              Crisis resources stay visible. High-risk messages pause AI coaching.
+            </div>
+          </div>
+        )}
+
+        {currentStep === "consent" && (
           <div className="onboarding-step">
             <h2>Consent and privacy</h2>
             <ConsentToggle
@@ -170,8 +321,8 @@ export function OnboardingFlow({ onComplete }) {
             />
             <ConsentToggle
               checked={draft.acceptedPrivacyPolicy}
-              title="I accept local data storage for this prototype."
-              text="Your check-ins, journal, and chat history are stored in this browser unless deleted."
+              title="I accept private app storage for this prototype."
+              text="Your profile, check-ins, journal, and chat history are stored in this browser and encrypted in the vault."
               onChange={(value) => setDraft({ ...draft, acceptedPrivacyPolicy: value })}
             />
             <ConsentToggle
@@ -180,28 +331,38 @@ export function OnboardingFlow({ onComplete }) {
               text="Off by default. This prototype does not use your content for model training."
               onChange={(value) => setDraft({ ...draft, allowModelTraining: value })}
             />
+            {error && <p className="lock-error">{error}</p>}
           </div>
         )}
 
-        <div className="onboarding-footer">
-          <span>{step + 1} of 3</span>
-          {step > 0 && (
-            <button className="ghost-button" type="button" onClick={() => setStep((value) => value - 1)}>
-              Back
-            </button>
-          )}
-          {step < 2 ? (
-            <button className="primary-button primary-button--auto" type="button" onClick={() => setStep((value) => value + 1)}>
-              Continue
-              <ChevronRight size={17} />
-            </button>
-          ) : (
-            <button className="primary-button primary-button--auto" type="button" disabled={!canContinue} onClick={finish}>
-              Enter Kin
-              <Lock size={17} />
-            </button>
-          )}
-        </div>
+        {currentStep !== "passcode" && (
+          <div className="onboarding-footer">
+            <span>
+              {Math.min(stepIndex + 1, totalSteps)} of {totalSteps}
+            </span>
+            {stepIndex > 0 && (
+              <button className="ghost-button" type="button" onClick={() => setStepIndex((value) => value - 1)}>
+                Back
+              </button>
+            )}
+            {stepIndex < steps.length - 1 ? (
+              <button
+                className="primary-button primary-button--auto"
+                type="button"
+                disabled={!canContinue}
+                onClick={() => setStepIndex((value) => value + 1)}
+              >
+                Continue
+                <ChevronRight size={17} />
+              </button>
+            ) : (
+              <button className="primary-button primary-button--auto" type="button" disabled={!canFinish || isSubmitting} onClick={finish}>
+                <Lock size={17} />
+                {isSubmitting ? "Saving..." : "Enter Kin"}
+              </button>
+            )}
+          </div>
+        )}
       </section>
     </main>
   );
@@ -217,6 +378,30 @@ function ConsentToggle({ checked, title, text, onChange }) {
       </span>
     </label>
   );
+}
+
+function buildCarePlan(goals, now) {
+  return {
+    id: crypto.randomUUID(),
+    userId: "local-user",
+    focusAreas: goals.map((goal) => ({
+      id: crypto.randomUUID(),
+      label: goal,
+      severity: "unknown",
+    })),
+    goals: goals.map((goal) => ({
+      id: crypto.randomUUID(),
+      title: goal,
+      userLanguage: goal.replaceAll("_", " "),
+      status: "active",
+      createdAt: now,
+    })),
+    recommendedModuleIds: initialModulesForGoals(goals),
+    checkInFrequency: "daily",
+    reassessmentFrequencyDays: 14,
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 function initialModulesForGoals(goals) {

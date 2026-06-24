@@ -47,6 +47,8 @@ import { getInterventionById } from "./features/interventions/interventionServic
 import { JournalCenter } from "./features/journal/JournalCenter.jsx";
 import { MemoryCenter } from "./features/memory/MemoryCenter.jsx";
 import { addMemorySummary, createDefaultMemory, setAutoChatSummary } from "./features/memory/memoryService.js";
+import { OnboardingFlow } from "./features/onboarding/OnboardingFlow.jsx";
+import { isStartupConsentComplete, isStartupProfileComplete } from "./features/onboarding/startupSetupService.js";
 import {
   createAppLock,
   createDefaultAppLock,
@@ -142,9 +144,9 @@ const validTabIds = new Set([
 
 const defaultConsent = {
   userId: "local-user",
-  acceptedTerms: true,
-  acceptedPrivacyPolicy: true,
-  aiDisclosureAccepted: true,
+  acceptedTerms: false,
+  acceptedPrivacyPolicy: false,
+  aiDisclosureAccepted: false,
   allowPersonalization: true,
   allowAnalytics: false,
   allowModelTraining: false,
@@ -155,6 +157,10 @@ const defaultConsent = {
 
 const defaultProfile = {
   id: "local-user",
+  displayName: "",
+  pronouns: "",
+  genderIdentity: "",
+  identityNotes: "",
   ageRange: "",
   region: "US",
   language: "English",
@@ -168,6 +174,7 @@ const defaultProfile = {
   },
   createdAt: "",
   updatedAt: "",
+  setupCompletedAt: "",
 };
 
 export default function App() {
@@ -398,18 +405,6 @@ export default function App() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
-
-  useEffect(() => {
-    if (consent.acceptedTerms && consent.acceptedPrivacyPolicy && consent.aiDisclosureAccepted) return;
-    setConsent((current) => ({
-      ...defaultConsent,
-      ...current,
-      acceptedTerms: true,
-      acceptedPrivacyPolicy: true,
-      aiDisclosureAccepted: true,
-      updatedAt: new Date().toISOString(),
-    }));
-  }, [consent.acceptedPrivacyPolicy, consent.acceptedTerms, consent.aiDisclosureAccepted, setConsent]);
 
   useEffect(() => {
     if (!normalizedAppLock.enabled) {
@@ -1468,6 +1463,46 @@ export default function App() {
     }
   }
 
+  async function completeStartupSetup(setup) {
+    try {
+      const nextKinData = {
+        ...getCurrentKinDataSnapshot(),
+        consent: setup.consent,
+        profile: setup.profile,
+        carePlan: setup.carePlan,
+      };
+      if (vaultPasscode) {
+        await persistVault(vaultPasscode, userOpenRouter, nextKinData);
+        rememberVaultSignature(nextKinData, userOpenRouter);
+      }
+      setConsent(setup.consent);
+      setProfile(setup.profile);
+      setCarePlan(setup.carePlan);
+      setAuditEvents((events) => appendAuditEvent(events, "startup_setup_completed"));
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error.message || "Startup setup did not finish." };
+    }
+  }
+
+  async function updateProfileSettings(nextProfile) {
+    try {
+      const nextKinData = {
+        ...getCurrentKinDataSnapshot(),
+        profile: nextProfile,
+      };
+      if (vaultPasscode) {
+        await persistVault(vaultPasscode, userOpenRouter, nextKinData);
+        rememberVaultSignature(nextKinData, userOpenRouter);
+      }
+      setProfile(nextProfile);
+      setAuditEvents((events) => appendAuditEvent(events, "profile_updated"));
+      return { ok: true, message: "Profile updated." };
+    } catch (error) {
+      return { ok: false, message: error.message || "Profile update did not finish." };
+    }
+  }
+
   async function disableAppLock(passcode) {
     if (!(await verifyAppLockPasscode(passcode, appLock))) {
       return { ok: false, message: "Passcode did not match." };
@@ -1553,13 +1588,23 @@ export default function App() {
     return <GoogleLoginGate onSignIn={handleGoogleSignIn} />;
   }
 
-  if (isGithubPagesRuntime() && (!normalizedAppLock.enabled || !vaultUnlocked)) {
+  const needsPasscodeSetup = !normalizedAppLock.enabled || !vaultUnlocked;
+  const needsProfileSetup = !isStartupProfileComplete(profile);
+  const needsConsentSetup = !isStartupConsentComplete(consent);
+
+  if (needsPasscodeSetup || needsProfileSetup || needsConsentSetup) {
     return (
-      <RequiredPasscodeSetup
+      <OnboardingFlow
         email={googleSession.email}
         hasAppPasscode={normalizedAppLock.enabled}
         hasLocalVault={Boolean(readLocalEncryptedVault())}
-        onSubmit={completeRequiredPasscodeSetup}
+        needsPasscodeSetup={needsPasscodeSetup}
+        needsProfileSetup={needsProfileSetup}
+        needsConsentSetup={needsConsentSetup}
+        profile={profile}
+        consent={consent}
+        onPasscodeSubmit={completeRequiredPasscodeSetup}
+        onComplete={completeStartupSetup}
       />
     );
   }
@@ -1687,6 +1732,8 @@ export default function App() {
       <PrivacyCenter
         consent={consent}
         setConsent={setConsent}
+        profile={profile}
+        onUpdateProfile={updateProfileSettings}
         exportData={exportData}
         appLock={appLock}
         onEnableAppLock={enableAppLock}
@@ -2244,100 +2291,6 @@ function HomeAction({ icon: Icon, title, copy, action, onClick }) {
 
 function RotateHomeIcon(props) {
   return <Wrench {...props} />;
-}
-
-function RequiredPasscodeSetup({ email, hasAppPasscode, hasLocalVault, onSubmit }) {
-  const [passcode, setPasscode] = useState("");
-  const [confirmPasscode, setConfirmPasscode] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isNewPasscode = !hasAppPasscode;
-  const title = isNewPasscode ? "Create your Kin passcode" : "Enter your Kin passcode";
-  const action = isNewPasscode ? "Set up Kin" : "Unlock Kin";
-
-  async function submit(event) {
-    event.preventDefault();
-    if (isSubmitting) return;
-    if (passcode.length < 8) {
-      setError("Use at least 8 characters.");
-      return;
-    }
-    if (isNewPasscode && passcode !== confirmPasscode) {
-      setError("Passcodes do not match.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError("");
-    const result = await onSubmit(passcode);
-    if (!result?.ok) {
-      setError(result?.message || "Kin passcode setup did not finish.");
-      setPasscode("");
-      setConfirmPasscode("");
-    }
-    setIsSubmitting(false);
-  }
-
-  return (
-    <main className="login-gate">
-      <section className="login-card">
-        <div className="brand login-card__brand">
-          <div className="brand-mark">
-            <Lock size={28} />
-          </div>
-          <div>
-            <h1>Kin</h1>
-            <p>{email}</p>
-          </div>
-        </div>
-
-        <div className="login-card__body">
-          <Lock size={36} />
-          <h2>{title}</h2>
-          <p>
-            This one passcode unlocks the app and encrypts the private vault. The vault is required so Kin can protect
-            and restore your data.
-          </p>
-        </div>
-
-        <form className="sync-unlock-panel" onSubmit={submit}>
-          <label className="field-block">
-            <span>{isNewPasscode ? "App and vault passcode" : "Passcode"}</span>
-            <input
-              type="password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-              placeholder="Use at least 8 characters"
-              autoComplete={isNewPasscode ? "new-password" : "current-password"}
-            />
-          </label>
-          {isNewPasscode && (
-            <label className="field-block">
-              <span>Confirm passcode</span>
-              <input
-                type="password"
-                value={confirmPasscode}
-                onChange={(event) => setConfirmPasscode(event.target.value)}
-                placeholder="Re-enter passcode"
-                autoComplete="new-password"
-              />
-            </label>
-          )}
-          {error && <p className="lock-error">{error}</p>}
-          <button className="primary-button primary-button--auto" type="submit" disabled={!passcode || isSubmitting}>
-            <Lock size={17} />
-            {isSubmitting ? "Setting up..." : action}
-          </button>
-        </form>
-
-        <p className="plain-copy">
-          {hasLocalVault
-            ? "Kin found a local encrypted vault. Use the same passcode to unlock it."
-            : "If this is the first setup in this app, Google may ask for Drive access so Kin can create the encrypted vault."}
-        </p>
-      </section>
-    </main>
-  );
 }
 
 function ApiStatusBadge({ mode, onReconnect }) {

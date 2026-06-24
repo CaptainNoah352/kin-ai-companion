@@ -1,5 +1,11 @@
-import { Database, Download, Eye, Lock, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Database, Download, Eye, Lock, RotateCcw, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  buildStartupProfile,
+  createStartupDraft,
+  genderIdentityOptions,
+  pronounOptions,
+} from "../onboarding/startupSetupService.js";
 import { appLockTimeoutOptions, createDefaultAppLock } from "./appLockService.js";
 import { dataCategories, buildPrivacyExport, downloadJson } from "./dataExport.js";
 import { RemoteAccessPanel } from "./RemoteAccessPanel.jsx";
@@ -7,6 +13,8 @@ import { RemoteAccessPanel } from "./RemoteAccessPanel.jsx";
 export function PrivacyCenter({
   consent,
   setConsent,
+  profile,
+  onUpdateProfile,
   exportData,
   appLock,
   onEnableAppLock,
@@ -37,6 +45,7 @@ export function PrivacyCenter({
       {setupChecklist}
       <RemoteAccessPanel />
       {syncCenter}
+      <ProfileSettings profile={profile} onUpdateProfile={onUpdateProfile} />
 
       <section className="surface-section">
         <div className="section-heading">
@@ -113,6 +122,214 @@ export function PrivacyCenter({
       </section>
     </section>
   );
+}
+
+function ProfileSettings({ profile, onUpdateProfile }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(() => createStartupDraft({ profile }));
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(createStartupDraft({ profile }));
+  }, [profile]);
+
+  async function saveProfile(event) {
+    event.preventDefault();
+    if (isSaving) return;
+    if (!draft.displayName.trim()) {
+      setError("Add a chosen name before saving.");
+      return;
+    }
+    if (!draft.language.trim()) {
+      setError("Add a language before saving.");
+      return;
+    }
+
+    setIsSaving(true);
+    setMessage("");
+    setError("");
+    const nextProfile = buildStartupProfile({
+      draft,
+      existingProfile: profile || {},
+      now: new Date().toISOString(),
+    });
+    const result = await onUpdateProfile(nextProfile);
+    if (!result?.ok) {
+      setError(result?.message || "Profile update did not finish.");
+      setIsSaving(false);
+      return;
+    }
+    setMessage(result.message || "Profile updated.");
+    setIsEditing(false);
+    setIsSaving(false);
+  }
+
+  function cancelEdit() {
+    setDraft(createStartupDraft({ profile }));
+    setMessage("");
+    setError("");
+    setIsEditing(false);
+  }
+
+  return (
+    <section className="surface-section profile-settings-card">
+      <div className="section-heading">
+        <div>
+          <h2>Profile settings</h2>
+          <p>Update how Kin addresses you and stores your profile in the encrypted vault.</p>
+        </div>
+        <UserRound size={22} />
+      </div>
+
+      {!isEditing ? (
+        <>
+          <div className="profile-summary-grid">
+            <ProfileSummaryItem label="Chosen name" value={profile?.displayName || "Not set"} />
+            <ProfileSummaryItem label="Pronouns" value={profile?.pronouns || "Prefer not to say"} />
+            <ProfileSummaryItem label="Gender identity" value={formatIdentity(profile?.genderIdentity)} />
+            <ProfileSummaryItem label="Region" value={formatRegion(profile?.region)} />
+          </div>
+          {profile?.identityNotes && <p className="plain-copy">{profile.identityNotes}</p>}
+          {message && <p className="form-success">{message}</p>}
+          <button className="primary-button primary-button--auto" type="button" onClick={() => setIsEditing(true)}>
+            <UserRound size={17} />
+            Edit profile
+          </button>
+        </>
+      ) : (
+        <form className="profile-settings-form" onSubmit={saveProfile}>
+          <div className="form-grid form-grid--two">
+            <label className="field-block">
+              <span>Chosen name</span>
+              <input
+                type="text"
+                value={draft.displayName}
+                onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
+                autoComplete="given-name"
+              />
+            </label>
+            <label className="field-block">
+              <span>Pronouns</span>
+              <select value={draft.pronouns} onChange={(event) => setDraft({ ...draft, pronouns: event.target.value })}>
+                {pronounOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {draft.pronouns === "custom" && (
+              <label className="field-block">
+                <span>Custom pronouns</span>
+                <input
+                  type="text"
+                  value={draft.customPronouns}
+                  onChange={(event) => setDraft({ ...draft, customPronouns: event.target.value })}
+                />
+              </label>
+            )}
+            <label className="field-block">
+              <span>Gender identity</span>
+              <select
+                value={draft.genderIdentity}
+                onChange={(event) => setDraft({ ...draft, genderIdentity: event.target.value })}
+              >
+                {genderIdentityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {draft.genderIdentity === "custom" && (
+              <label className="field-block">
+                <span>Custom gender identity</span>
+                <input
+                  type="text"
+                  value={draft.customGenderIdentity}
+                  onChange={(event) => setDraft({ ...draft, customGenderIdentity: event.target.value })}
+                />
+              </label>
+            )}
+            <label className="field-block">
+              <span>Age range</span>
+              <select value={draft.ageRange} onChange={(event) => setDraft({ ...draft, ageRange: event.target.value })}>
+                <option value="13_17">13-17</option>
+                <option value="18_24">18-24</option>
+                <option value="25_34">25-34</option>
+                <option value="35_44">35-44</option>
+                <option value="45_64">45-64</option>
+                <option value="65_plus">65+</option>
+              </select>
+            </label>
+            <label className="field-block">
+              <span>Region</span>
+              <select value={draft.region} onChange={(event) => setDraft({ ...draft, region: event.target.value })}>
+                <option value="US">United States</option>
+                <option value="SE">Sweden</option>
+                <option value="default">Other</option>
+              </select>
+            </label>
+            <label className="field-block">
+              <span>Language</span>
+              <input
+                type="text"
+                value={draft.language}
+                onChange={(event) => setDraft({ ...draft, language: event.target.value })}
+              />
+            </label>
+          </div>
+
+          <label className="field-block">
+            <span>Anything Kin should know about referring to you?</span>
+            <textarea
+              value={draft.identityNotes}
+              onChange={(event) => setDraft({ ...draft, identityNotes: event.target.value })}
+              rows={3}
+            />
+          </label>
+
+          {error && <p className="lock-error">{error}</p>}
+          {message && <p className="form-success">{message}</p>}
+
+          <div className="privacy-actions">
+            <button className="primary-button primary-button--auto" type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save profile"}
+            </button>
+            <button className="secondary-button secondary-button--auto" type="button" onClick={cancelEdit} disabled={isSaving}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function ProfileSummaryItem({ label, value }) {
+  return (
+    <span className="profile-summary-item">
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  );
+}
+
+function formatIdentity(value) {
+  if (!value) return "Prefer not to say";
+  const option = genderIdentityOptions.find((item) => item.value === value);
+  return option?.label || value;
+}
+
+function formatRegion(value) {
+  const regions = {
+    US: "United States",
+    SE: "Sweden",
+    default: "Other",
+  };
+  return regions[value] || "Other";
 }
 
 function PrivacyToggle({ label, checked, onClick }) {
