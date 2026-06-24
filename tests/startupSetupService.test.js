@@ -7,6 +7,7 @@ import {
   createStartupDraft,
   genderIdentityOptions,
   getStartupStepIds,
+  isStartupDraftReadyToFinish,
   isStartupConsentComplete,
   isStartupProfileComplete,
   pronounOptions,
@@ -26,6 +27,44 @@ test("startup consent requires the AI, terms, and privacy acknowledgements", () 
       acceptedTerms: true,
       acceptedPrivacyPolicy: true,
       aiDisclosureAccepted: true,
+    }),
+    true,
+  );
+});
+
+test("startup finish only requires active setup sections", () => {
+  const profileDraft = createStartupDraft({
+    profile: {
+      displayName: "Hunter",
+    },
+  });
+
+  assert.equal(
+    isStartupDraftReadyToFinish({
+      draft: profileDraft,
+      needsProfileSetup: true,
+      needsConsentSetup: false,
+    }),
+    true,
+  );
+  assert.equal(
+    isStartupDraftReadyToFinish({
+      draft: profileDraft,
+      needsProfileSetup: true,
+      needsConsentSetup: true,
+    }),
+    false,
+  );
+  assert.equal(
+    isStartupDraftReadyToFinish({
+      draft: {
+        ...profileDraft,
+        acceptedTerms: true,
+        acceptedPrivacyPolicy: true,
+        aiDisclosureAccepted: true,
+      },
+      needsProfileSetup: true,
+      needsConsentSetup: true,
     }),
     true,
   );

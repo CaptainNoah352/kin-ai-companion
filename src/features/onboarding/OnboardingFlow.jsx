@@ -8,6 +8,7 @@ import {
   genderIdentityOptions,
   getStartupStepIds,
   goalOptions,
+  isStartupDraftReadyToFinish,
   pronounOptions,
   supportStyleOptions,
 } from "./startupSetupService.js";
@@ -47,11 +48,7 @@ export function OnboardingFlow({
   const isNewPasscode = !hasAppPasscode;
   const profileReady = Boolean(draft.displayName.trim() && draft.region && draft.language.trim());
   const canContinue = currentStep === "profile" ? profileReady : true;
-  const canFinish =
-    draft.acceptedTerms &&
-    draft.acceptedPrivacyPolicy &&
-    draft.aiDisclosureAccepted &&
-    (!needsProfileSetup || profileReady);
+  const canFinish = isStartupDraftReadyToFinish({ draft, needsProfileSetup, needsConsentSetup });
 
   async function submitPasscode(event) {
     event.preventDefault();

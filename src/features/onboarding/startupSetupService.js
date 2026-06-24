@@ -94,6 +94,16 @@ export function isStartupConsentComplete(consent = {}) {
   return Boolean(consent?.acceptedTerms && consent?.acceptedPrivacyPolicy && consent?.aiDisclosureAccepted);
 }
 
+export function isStartupDraftReadyToFinish({
+  draft = {},
+  needsProfileSetup = false,
+  needsConsentSetup = false,
+} = {}) {
+  const profileReady = Boolean(draft.displayName?.trim() && draft.region && draft.language?.trim());
+  const consentReady = Boolean(draft.acceptedTerms && draft.acceptedPrivacyPolicy && draft.aiDisclosureAccepted);
+  return (!needsProfileSetup || profileReady) && (!needsConsentSetup || consentReady);
+}
+
 export function buildStartupProfile({ draft, existingProfile = {}, now = new Date().toISOString() }) {
   const displayName = draft.displayName.trim();
   return {
