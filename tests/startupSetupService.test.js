@@ -11,14 +11,33 @@ import {
   isStartupDraftReadyToFinish,
   isStartupConsentComplete,
   isStartupProfileComplete,
+  normalizeStartupProfile,
   pronounOptions,
   supportStyleOptions,
 } from "../src/features/onboarding/startupSetupService.js";
 
-test("startup profile requires a chosen name and completed setup timestamp", () => {
-  assert.equal(isStartupProfileComplete({ displayName: "Sam" }), false);
+test("startup profile accepts restored legacy profiles with a chosen name", () => {
+  assert.equal(isStartupProfileComplete({ displayName: "Sam" }), true);
   assert.equal(isStartupProfileComplete({ displayName: "  ", setupCompletedAt: "2026-06-24T10:00:00.000Z" }), false);
   assert.equal(isStartupProfileComplete({ displayName: "Sam", setupCompletedAt: "2026-06-24T10:00:00.000Z" }), true);
+});
+
+test("restored startup profiles are normalized without asking setup again", () => {
+  const profile = normalizeStartupProfile(
+    {
+      id: "local-user",
+      name: " Hunter ",
+      pronouns: "they/them",
+      createdAt: "2026-06-24T10:00:00.000Z",
+    },
+    "2026-06-24T11:00:00.000Z",
+  );
+
+  assert.equal(profile.displayName, "Hunter");
+  assert.equal(profile.pronouns, "they/them");
+  assert.equal(profile.createdAt, "2026-06-24T10:00:00.000Z");
+  assert.equal(profile.setupCompletedAt, "2026-06-24T10:00:00.000Z");
+  assert.equal(isStartupProfileComplete(profile), true);
 });
 
 test("startup consent requires the AI, terms, and privacy acknowledgements", () => {

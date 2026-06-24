@@ -86,8 +86,32 @@ export function createStartupDraft({ profile = {}, consent = {} } = {}) {
   };
 }
 
+export function normalizeStartupProfile(profile = {}, now = new Date().toISOString()) {
+  const normalizedProfile = profile && typeof profile === "object" ? profile : {};
+  const displayName =
+    normalizeStoredIdentityValue(normalizedProfile.displayName) || normalizeStoredIdentityValue(normalizedProfile.name);
+  if (!displayName) return normalizedProfile;
+
+  const completedAt =
+    normalizedProfile.setupCompletedAt || normalizedProfile.createdAt || normalizedProfile.updatedAt || now;
+
+  return {
+    ...normalizedProfile,
+    id: normalizedProfile.id || "local-user",
+    displayName,
+    createdAt: normalizedProfile.createdAt || completedAt,
+    updatedAt: normalizedProfile.updatedAt || completedAt,
+    setupCompletedAt: completedAt,
+  };
+}
+
 export function isStartupProfileComplete(profile = {}) {
-  return Boolean(profile?.setupCompletedAt && typeof profile?.displayName === "string" && profile.displayName.trim());
+  const normalizedProfile = normalizeStartupProfile(profile);
+  return Boolean(
+    normalizedProfile?.setupCompletedAt &&
+      typeof normalizedProfile?.displayName === "string" &&
+      normalizedProfile.displayName.trim(),
+  );
 }
 
 export function isStartupConsentComplete(consent = {}) {

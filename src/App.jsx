@@ -53,6 +53,7 @@ import {
   buildCarePlanForGoals,
   isStartupConsentComplete,
   isStartupProfileComplete,
+  normalizeStartupProfile,
 } from "./features/onboarding/startupSetupService.js";
 import {
   createAppLock,
@@ -927,29 +928,38 @@ export default function App() {
     }
   }
 
+  function normalizeKinDataFromVault(kinData = {}) {
+    return {
+      ...kinData,
+      profile: normalizeStartupProfile(kinData.profile ?? defaultProfile),
+    };
+  }
+
   function applyKinDataFromVault(kinData = {}) {
-    restoreKinDataFromVault(kinData);
-    setConsent(kinData.consent ?? defaultConsent);
-    setProfile(kinData.profile ?? defaultProfile);
-    setActiveAppSpaceState(normalizeAppSpace(kinData.activeAppSpace));
-    setAppSpaceTabs(createDefaultAppSpaceTabs(kinData.appSpaceTabs));
-    setWellnessMessages(kinData.wellnessMessages ?? kinData.messages ?? []);
-    setAdhdMessages(kinData.adhdMessages ?? []);
-    setAdhdTasks(createDefaultAdhdTasks(kinData.adhdTasks));
-    setGoals(kinData.goals ?? []);
-    setStartSessions(kinData.startSessions ?? []);
-    setWeeklyReviews(kinData.weeklyReviews ?? []);
-    setCheckIns(kinData.checkIns ?? []);
-    setJournalEntries(kinData.journal ?? []);
-    setCompletedModules(kinData.completedModules ?? []);
-    setModuleDrafts(kinData.moduleDrafts ?? {});
-    setCarePlan(kinData.carePlan ?? null);
-    setSafetySignals(kinData.safetySignals ?? []);
-    setSafetyPlan(kinData.safetyPlan ?? null);
-    setMemory(createDefaultMemory(kinData.memory));
-    setAppLock(kinData.appLock ?? createDefaultAppLock());
-    setAuditEvents(kinData.auditEvents ?? []);
-    setInstallHintDismissed(Boolean(kinData.installHintDismissed));
+    const restoredKinData = normalizeKinDataFromVault(kinData);
+    restoreKinDataFromVault(restoredKinData);
+    setConsent(restoredKinData.consent ?? defaultConsent);
+    setProfile(restoredKinData.profile ?? defaultProfile);
+    setActiveAppSpaceState(normalizeAppSpace(restoredKinData.activeAppSpace));
+    setAppSpaceTabs(createDefaultAppSpaceTabs(restoredKinData.appSpaceTabs));
+    setWellnessMessages(restoredKinData.wellnessMessages ?? restoredKinData.messages ?? []);
+    setAdhdMessages(restoredKinData.adhdMessages ?? []);
+    setAdhdTasks(createDefaultAdhdTasks(restoredKinData.adhdTasks));
+    setGoals(restoredKinData.goals ?? []);
+    setStartSessions(restoredKinData.startSessions ?? []);
+    setWeeklyReviews(restoredKinData.weeklyReviews ?? []);
+    setCheckIns(restoredKinData.checkIns ?? []);
+    setJournalEntries(restoredKinData.journal ?? []);
+    setCompletedModules(restoredKinData.completedModules ?? []);
+    setModuleDrafts(restoredKinData.moduleDrafts ?? {});
+    setCarePlan(restoredKinData.carePlan ?? null);
+    setSafetySignals(restoredKinData.safetySignals ?? []);
+    setSafetyPlan(restoredKinData.safetyPlan ?? null);
+    setMemory(createDefaultMemory(restoredKinData.memory));
+    setAppLock(restoredKinData.appLock ?? createDefaultAppLock());
+    setAuditEvents(restoredKinData.auditEvents ?? []);
+    setInstallHintDismissed(Boolean(restoredKinData.installHintDismissed));
+    return restoredKinData;
   }
 
   async function persistVault(
@@ -985,21 +995,23 @@ export default function App() {
       ? mergeUnsyncedLocalChatData(payload.kinData || {}, listStoredKinData())
       : payload.kinData || {};
     let restoredPayload = payload;
-    applyKinDataFromVault(restoredKinData);
+    const normalizedRestoredKinData = applyKinDataFromVault(restoredKinData);
     setUserOpenRouter(createDefaultUserOpenRouter(payload.userOpenRouter));
-    if (restoredKinData === payload.kinData) {
+    const incomingSignature = getVaultContentSignature(payload.kinData || {}, payload.userOpenRouter);
+    const restoredSignature = getVaultContentSignature(normalizedRestoredKinData, payload.userOpenRouter);
+    if (incomingSignature === restoredSignature) {
       writeLocalEncryptedVault(envelope);
     } else {
       restoredPayload = buildVaultPayload({
-        kinData: restoredKinData,
+        kinData: normalizedRestoredKinData,
         userOpenRouter: payload.userOpenRouter,
         driveSync,
       });
       writeLocalEncryptedVault(await createEncryptedVault(restoredPayload, passcode));
     }
-    rememberVaultSignature(restoredPayload.kinData || restoredKinData, restoredPayload.userOpenRouter);
+    rememberVaultSignature(restoredPayload.kinData || normalizedRestoredKinData, restoredPayload.userOpenRouter);
     lastLocalVaultSnapshotSignatureRef.current = getVaultContentSignature(
-      restoredPayload.kinData || restoredKinData,
+      restoredPayload.kinData || normalizedRestoredKinData,
       restoredPayload.userOpenRouter,
     );
     skipNextAutoSyncRef.current = true;

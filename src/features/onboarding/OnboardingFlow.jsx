@@ -1,5 +1,5 @@
 import { Check, ChevronRight, Lock, ShieldCheck, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   buildCarePlanForGoals,
   buildStartupConsent,
@@ -52,6 +52,10 @@ export function OnboardingFlow({
   const profileReady = Boolean(draft.displayName.trim() && draft.region && draft.language.trim());
   const canContinue = currentStep === "profile" ? profileReady : true;
   const canFinish = isStartupDraftReadyToFinish({ draft, needsProfileSetup, needsConsentSetup });
+
+  useEffect(() => {
+    setDraft(createStartupDraft({ profile, consent }));
+  }, [profile, consent]);
 
   async function submitPasscode(event) {
     event.preventDefault();
