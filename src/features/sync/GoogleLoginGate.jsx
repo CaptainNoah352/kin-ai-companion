@@ -23,7 +23,7 @@ export function GoogleLoginGate({ onSignIn }) {
     setIsSigningIn(true);
     try {
       const profile = await signInWithGoogle();
-      onSignIn(profile);
+      await onSignIn(profile);
     } catch (signInError) {
       setError(signInError.message || "Google sign-in did not complete.");
     } finally {

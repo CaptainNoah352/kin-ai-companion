@@ -6,6 +6,7 @@ import {
   buildStartupProfile,
   createStartupDraft,
   genderIdentityOptions,
+  getStartupPasscodeMode,
   getStartupStepIds,
   isStartupDraftReadyToFinish,
   isStartupConsentComplete,
@@ -68,6 +69,12 @@ test("startup finish only requires active setup sections", () => {
     }),
     true,
   );
+});
+
+test("startup passcode mode unlocks when an existing vault is known", () => {
+  assert.equal(getStartupPasscodeMode({ hasAppPasscode: false, hasExistingVault: false }), "create");
+  assert.equal(getStartupPasscodeMode({ hasAppPasscode: true, hasExistingVault: false }), "unlock");
+  assert.equal(getStartupPasscodeMode({ hasAppPasscode: false, hasExistingVault: true }), "unlock");
 });
 
 test("startup steps keep vault setup active until parent setup state changes", () => {

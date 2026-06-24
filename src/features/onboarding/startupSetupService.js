@@ -104,6 +104,10 @@ export function isStartupDraftReadyToFinish({
   return (!needsProfileSetup || profileReady) && (!needsConsentSetup || consentReady);
 }
 
+export function getStartupPasscodeMode({ hasAppPasscode = false, hasExistingVault = false } = {}) {
+  return hasAppPasscode || hasExistingVault ? "unlock" : "create";
+}
+
 export function buildStartupProfile({ draft, existingProfile = {}, now = new Date().toISOString() }) {
   const displayName = draft.displayName.trim();
   return {

@@ -1,6 +1,7 @@
 const googleScriptSrc = "https://accounts.google.com/gsi/client?hl=en";
 const driveScope = "https://www.googleapis.com/auth/drive.appdata";
 const profileScope = "openid email profile";
+const signInScope = `${profileScope} ${driveScope}`;
 const googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
 const googleTokenTimeoutMs = 90000;
 const defaultGoogleClientId = "524721215499-7jl63p40vilprfhin56vr9k8as4s1mm5.apps.googleusercontent.com";
@@ -72,10 +73,11 @@ export async function requestDriveAccessToken({ prompt = "consent" } = {}) {
 }
 
 export async function signInWithGoogle() {
-  const accessToken = await requestGoogleAccessToken({ prompt: "consent", scope: profileScope });
+  const accessToken = await requestGoogleAccessToken({ prompt: "consent", scope: signInScope });
   const profile = await fetchGoogleProfile(accessToken);
   return {
     ...profile,
+    accessToken,
     signedInAt: new Date().toISOString(),
   };
 }

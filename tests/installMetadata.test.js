@@ -58,3 +58,11 @@ test("google oauth client id is available for GitHub Pages builds", async () => 
 
   assert.match(getGoogleClientId(), /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
 });
+
+test("google sign-in requests Drive app-data scope for vault restore", () => {
+  const authSource = readFileSync(resolve(root, "src", "features", "sync", "googleAuthService.js"), "utf8");
+
+  assert.match(authSource, /openid email profile/);
+  assert.match(authSource, /https:\/\/www\.googleapis\.com\/auth\/drive\.appdata/);
+  assert.match(authSource, /signInScope/);
+});

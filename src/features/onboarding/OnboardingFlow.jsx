@@ -6,6 +6,7 @@ import {
   buildStartupProfile,
   createStartupDraft,
   genderIdentityOptions,
+  getStartupPasscodeMode,
   getStartupStepIds,
   goalOptions,
   isStartupDraftReadyToFinish,
@@ -19,6 +20,7 @@ const limitationCopy =
 export function OnboardingFlow({
   email,
   hasAppPasscode,
+  hasExistingVault,
   hasLocalVault,
   needsPasscodeSetup,
   needsProfileSetup,
@@ -45,7 +47,8 @@ export function OnboardingFlow({
   );
   const currentStep = steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))];
   const totalSteps = Math.max(steps.length, 1);
-  const isNewPasscode = !hasAppPasscode;
+  const passcodeMode = getStartupPasscodeMode({ hasAppPasscode, hasExistingVault });
+  const isNewPasscode = passcodeMode === "create";
   const profileReady = Boolean(draft.displayName.trim() && draft.region && draft.language.trim());
   const canContinue = currentStep === "profile" ? profileReady : true;
   const canFinish = isStartupDraftReadyToFinish({ draft, needsProfileSetup, needsConsentSetup });
@@ -147,15 +150,16 @@ export function OnboardingFlow({
               <span>
                 <h2>{isNewPasscode ? "Create your Kin passcode" : "Unlock your Kin vault"}</h2>
                 <p>
-                  This one passcode unlocks the app and encrypts the private vault. Set this up before entering profile
-                  details so your personal information is protected from the start.
+                  {isNewPasscode
+                    ? "This one passcode unlocks the app and encrypts the private vault. Set this up before entering profile details so your personal information is protected from the start."
+                    : "Enter the vault passcode you already use. Kin will restore your encrypted vault and profile from this browser or Google Drive."}
                 </p>
               </span>
             </div>
 
             <form className="sync-unlock-panel" onSubmit={submitPasscode}>
               <label className="field-block">
-                <span>{isNewPasscode ? "App and vault passcode" : "Passcode"}</span>
+                <span>{isNewPasscode ? "App and vault passcode" : "Vault passcode"}</span>
                 <input
                   type="password"
                   value={passcode}
@@ -186,6 +190,8 @@ export function OnboardingFlow({
             <p className="plain-copy">
               {hasLocalVault
                 ? "Kin found a local encrypted vault. Use the same passcode to unlock it."
+                : hasExistingVault
+                  ? "Kin found an encrypted Drive vault for this Google account. Enter its passcode to restore your profile."
                 : "Google may ask for Drive access so Kin can create or restore the encrypted vault."}
             </p>
           </div>

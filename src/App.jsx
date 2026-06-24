@@ -739,9 +739,46 @@ export default function App() {
     setMemory((current) => setAutoChatSummary(current, text));
   }
 
-  const handleGoogleSignIn = useCallback((profile) => {
+  const handleGoogleSignIn = useCallback(async (profile) => {
     const { accessToken, ...session } = profile || {};
-    if (accessToken) saveDriveAccessToken(accessToken);
+    let remoteVault = null;
+    let driveLookupCompleted = false;
+    if (accessToken) {
+      saveDriveAccessToken(accessToken);
+      try {
+        remoteVault = await findDriveVault(accessToken);
+        driveLookupCompleted = true;
+      } catch (error) {
+        setDriveSync((current) => ({
+          ...createDefaultDriveSync(current),
+          enabled: true,
+          status: "needs-google-session",
+          error: normalizeDriveSyncError(error),
+        }));
+      }
+    }
+    if (remoteVault?.id) {
+      setDriveSync((current) => ({
+        ...createDefaultDriveSync(current),
+        enabled: true,
+        fileId: remoteVault.id,
+        lastRemoteModifiedAt: remoteVault.modifiedTime || current?.lastRemoteModifiedAt || "",
+        status: "remote-found",
+        error: "",
+      }));
+      setSyncMessage("Encrypted Drive vault found. Enter your vault passcode to restore Kin.");
+      setSyncError("");
+    } else if (accessToken && driveLookupCompleted) {
+      setDriveSync((current) => ({
+        ...createDefaultDriveSync(current),
+        enabled: false,
+        fileId: "",
+        lastSyncedAt: "",
+        lastRemoteModifiedAt: "",
+        status: "not-configured",
+        error: "",
+      }));
+    }
     setGoogleSession(session);
     setAuditEvents((events) => appendAuditEvent(events, "google_sign_in", { email: session.email || "" }));
   }, [setAuditEvents, setGoogleSession]);
@@ -1603,13 +1640,16 @@ export default function App() {
   const needsPasscodeSetup = !normalizedAppLock.enabled || !vaultUnlocked;
   const needsProfileSetup = !isStartupProfileComplete(profile);
   const needsConsentSetup = !isStartupConsentComplete(consent);
+  const hasLocalVault = Boolean(readLocalEncryptedVault());
+  const hasExistingVault = hasLocalVault || Boolean(createDefaultDriveSync(driveSync).fileId);
 
   if (needsPasscodeSetup || needsProfileSetup || needsConsentSetup) {
     return (
       <OnboardingFlow
         email={googleSession.email}
         hasAppPasscode={normalizedAppLock.enabled}
-        hasLocalVault={Boolean(readLocalEncryptedVault())}
+        hasExistingVault={hasExistingVault}
+        hasLocalVault={hasLocalVault}
         needsPasscodeSetup={needsPasscodeSetup}
         needsProfileSetup={needsProfileSetup}
         needsConsentSetup={needsConsentSetup}
