@@ -162,6 +162,7 @@ export function buildRuntimeStatus({
       ok: Boolean(api?.ok),
       ai: api?.ai || "offline",
       safetyRouter: api?.safetyRouter || safetyRouterVersion,
+      ...(api?.modelRoles ? { modelRoles: api.modelRoles } : {}),
     },
     app,
     tailscale: normalizedTailscale,

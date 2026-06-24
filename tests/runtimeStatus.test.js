@@ -96,6 +96,23 @@ test("runtime status never includes API keys or env values", () => {
   }
 });
 
+test("runtime status can expose non-secret model role diagnostics", () => {
+  const status = buildRuntimeStatus({
+    api: {
+      ok: true,
+      ai: "openrouter",
+      safetyRouter: safetyRouterVersion,
+      modelRoles: {
+        normalCoach: "google/gemini-3.1-flash-lite",
+        deepSupport: "openai/gpt-5.4-mini",
+      },
+    },
+  });
+
+  assert.equal(status.api.modelRoles.normalCoach, "google/gemini-3.1-flash-lite");
+  assert.equal(status.api.modelRoles.deepSupport, "openai/gpt-5.4-mini");
+});
+
 test("detects Vite listening on all interfaces from netstat output", () => {
   const output = `
   TCP    0.0.0.0:988            0.0.0.0:0              LISTENING       1234

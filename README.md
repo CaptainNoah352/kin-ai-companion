@@ -139,6 +139,13 @@ In Render:
    - Health check path: `/api/health`
    - `KIN_SERVER_HOST=0.0.0.0`
    - `KIN_ALLOWED_ORIGINS=https://captainnoah352.github.io`
+   - `OPENROUTER_MODEL=google/gemini-3.1-flash-lite`
+   - `OPENROUTER_TASK_MODEL=google/gemini-3.1-flash-lite`
+   - `OPENROUTER_SAFETY_BACKUP_MODEL=google/gemini-3.1-flash-lite`
+   - `OPENROUTER_DEEP_SUPPORT_MODEL=openai/gpt-5.4-mini`
+   - `OPENROUTER_GOAL_MODEL=google/gemini-3.1-flash-lite`
+   - `OPENROUTER_SUMMARY_MODEL=google/gemini-3.1-flash-lite`
+   - `OPENROUTER_INSIGHT_MODEL=google/gemini-3.1-flash-lite`
    - `OPENROUTER_SITE_URL=https://captainnoah352.github.io/kin-ai-companion/`
 5. After deploy, open `https://<your-render-service>.onrender.com/api/health`. It should return JSON with `ok: true`.
 
@@ -188,15 +195,33 @@ To connect a real model through OpenRouter, copy `.env.example` to `.env` and se
 
 ```text
 OPENROUTER_API_KEY=your_key_here
-OPENROUTER_MODEL=your_openrouter_model_slug
-OPENROUTER_TASK_MODEL=openrouter/free
+OPENROUTER_MODEL=google/gemini-3.1-flash-lite
+OPENROUTER_TASK_MODEL=google/gemini-3.1-flash-lite
+OPENROUTER_SAFETY_BACKUP_MODEL=google/gemini-3.1-flash-lite
+OPENROUTER_DEEP_SUPPORT_MODEL=openai/gpt-5.4-mini
+OPENROUTER_GOAL_MODEL=google/gemini-3.1-flash-lite
+OPENROUTER_SUMMARY_MODEL=google/gemini-3.1-flash-lite
+OPENROUTER_INSIGHT_MODEL=google/gemini-3.1-flash-lite
 OPENROUTER_SITE_URL=http://127.0.0.1:988
 OPENROUTER_APP_NAME=Kin Mental Wellness Companion
 ```
 
 Then restart `npm.cmd run server`.
 
-Kin keeps the OpenRouter key on the local API server, not in the browser. `OPENROUTER_MODEL` is used for normal chat, while the task creator defaults to `OPENROUTER_TASK_MODEL=openrouter/free`. If OpenRouter is not configured, the server can still use the optional OpenAI fallback variables from `.env.example`, or it will remain in demo mode.
+Kin keeps the OpenRouter key on the local API server, not in the browser. If OpenRouter is not configured, the server can still use the optional OpenAI fallback variables from `.env.example`, or it will remain in demo mode.
+
+Default OpenRouter role routing:
+
+| Kin role | Default model |
+| --- | --- |
+| Safety classification backup | `google/gemini-3.1-flash-lite` |
+| Normal AI coach | `google/gemini-3.1-flash-lite` |
+| ADHD task support | `google/gemini-3.1-flash-lite` |
+| Goal tracking / reminders | `google/gemini-3.1-flash-lite` |
+| Deep emotional support | `openai/gpt-5.4-mini` with `anthropic/claude-haiku-4.5` as fallback |
+| Crisis handling | Safety Router, not normal chat |
+| Weekly summaries | `google/gemini-3.1-flash-lite` |
+| App naming, journaling, insight summaries | `google/gemini-3.1-flash-lite` |
 
 For a GitHub Pages beta, deploy `server.mjs` behind your own HTTPS origin and set:
 
@@ -211,7 +236,7 @@ If an OpenRouter key was pasted into a chat, rotate it in the OpenRouter dashboa
 
 ## Safety
 
-The safety router runs before normal coach responses in both the browser and API. If self-harm, suicide, violence, abuse, psychosis, mania, overdose, or emergency language is detected, Kin pauses normal AI coaching and opens the safety flow.
+The safety router runs before normal coach responses in both the browser and API. The server uses deterministic rules first and can ask Gemini Flash-Lite for a backup classification only when deterministic rules did not already pause chat. If self-harm, suicide, violence, abuse, psychosis, mania, overdose, or emergency language is detected, Kin pauses normal AI coaching and opens the safety flow.
 
 If someone might hurt themselves or someone else, use real-time human help. In the U.S., call or text **988**, use **988lifeline.org** chat, or call emergency services for immediate danger.
 

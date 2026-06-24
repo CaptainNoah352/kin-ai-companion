@@ -36,7 +36,7 @@ test("task breakdown rejects demo mode without leaking provider secrets", async 
   }
 });
 
-test("server task breakdown uses OpenRouter free router by default", async () => {
+test("server task breakdown uses Gemini Flash-Lite by default", async () => {
   const previousOpenRouterKey = process.env.OPENROUTER_API_KEY;
   const previousOpenRouterModel = process.env.OPENROUTER_MODEL;
   const previousOpenRouterTaskModel = process.env.OPENROUTER_TASK_MODEL;
@@ -46,7 +46,7 @@ test("server task breakdown uses OpenRouter free router by default", async () =>
   let requestBody = null;
 
   process.env.OPENROUTER_API_KEY = "test-openrouter-key";
-  process.env.OPENROUTER_MODEL = "openai/gpt-5.2";
+  delete process.env.OPENROUTER_MODEL;
   delete process.env.OPENROUTER_TASK_MODEL;
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_MODEL;
@@ -86,7 +86,7 @@ test("server task breakdown uses OpenRouter free router by default", async () =>
   }
 });
 
-test("browser task breakdown uses OpenRouter free router", async () => {
+test("browser task breakdown uses Gemini Flash-Lite role default", async () => {
   const previousFetch = globalThis.fetch;
   let requestBody = null;
 

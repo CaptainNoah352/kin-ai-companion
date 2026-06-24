@@ -1,7 +1,8 @@
 import { normalizeBreakdownResponse, normalizeSpiciness } from "./adhdTaskService.js";
+import { aiModelRoles, openRouterModelDefaults } from "../aiModels/modelPolicy.js";
 
 const openRouterApiUrl = "https://openrouter.ai/api/v1/chat/completions";
-export const taskBreakdownOpenRouterModel = "openrouter/free";
+export const taskBreakdownOpenRouterModel = openRouterModelDefaults[aiModelRoles.adhdTask];
 
 export async function createBrowserTaskBreakdown({ task, spiciness, userOpenRouter }) {
   if (!userOpenRouter?.apiKey) {

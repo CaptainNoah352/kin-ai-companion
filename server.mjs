@@ -12,6 +12,12 @@ import { buildSafetyResponse, classifySafety, shouldPauseForSafety } from "./src
 import { buildAppSpacePromptContext } from "./src/features/appSpaces/appSpaceService.js";
 import { normalizeBreakdownResponse, normalizeSpiciness } from "./src/features/adhdTasks/adhdTaskService.js";
 import { buildTaskBreakdownMessages, taskBreakdownOpenRouterModel } from "./src/features/adhdTasks/taskBreakdownClient.js";
+import {
+  aiModelRoles,
+  buildOpenRouterModelDiagnostics,
+  getOpenRouterModelForRole,
+  openRouterModelDefaults,
+} from "./src/features/aiModels/modelPolicy.js";
 import { buildModeSuggestion, buildSupportModePromptContext } from "./src/features/supportModes/supportModeService.js";
 import { getRuntimeStatus, safetyRouterVersion } from "./runtimeStatus.mjs";
 
@@ -83,7 +89,7 @@ function isTailscaleIpv4(host) {
 }
 
 function getAiProvider() {
-  if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_MODEL) {
+  if (process.env.OPENROUTER_API_KEY) {
     return "openrouter";
   }
 
@@ -92,6 +98,16 @@ function getAiProvider() {
   }
 
   return "demo";
+}
+
+function buildApiStatus() {
+  const provider = getAiProvider();
+  return {
+    ok: true,
+    ai: provider,
+    safetyRouter: safetyRouterVersion,
+    modelRoles: provider === "openrouter" ? buildOpenRouterModelDiagnostics(process.env) : undefined,
+  };
 }
 
 function sanitizeText(value, maxLength = 600) {
@@ -149,7 +165,7 @@ function timingSafeStringEqual(left, right) {
   return nodeTimingSafeEqual(leftBuffer, rightBuffer);
 }
 
-async function chatReply({
+export async function chatReply({
   messages,
   mood,
   latestCheckIn,
@@ -162,7 +178,7 @@ async function chatReply({
   bridgeContext = null,
 }) {
   const latest = messages.at(-1)?.content || "";
-  const safety = classifySafety(latest, { source: "ai_chat" });
+  const safety = await classifySafetyWithBackup(latest, { source: "ai_chat" });
 
   if (shouldPauseForSafety(safety)) {
     return buildSafetyResponse(safety, region);
@@ -208,8 +224,9 @@ async function chatReply({
     "Keep the response concise. Recommend app tools by name when useful.",
   ];
 
+  const modelRole = selectChatModelRole({ text: latest, latestCheckIn, supportModes: resolvedSupportModes });
   const text = provider === "openrouter"
-    ? await openRouterReply(promptParts, conversation)
+    ? await openRouterReply(promptParts, conversation, { modelRole })
     : await openAiReply(promptParts, conversation);
 
   return {
@@ -224,8 +241,23 @@ async function chatReply({
   };
 }
 
-async function openRouterReply(promptParts, conversation) {
-  const response = await fetch(openRouterApiUrl, {
+async function openRouterReply(promptParts, conversation, { modelRole = aiModelRoles.normalCoach } = {}) {
+  return openRouterChatCompletion({
+    model: getOpenRouterModelForRole(modelRole, process.env),
+    messages: [
+      {
+        role: "system",
+        content: promptParts.join("\n\n"),
+      },
+      ...conversation,
+    ],
+    fallbackModel: modelRole === aiModelRoles.deepSupport ? openRouterModelDefaults.deepSupportFallback : "",
+    fallbackLabel: "OpenRouter request",
+  });
+}
+
+async function openRouterChatCompletion({ model, messages, responseFormat, fallbackModel = "", fallbackLabel = "OpenRouter request" }) {
+  const request = (selectedModel) => fetch(openRouterApiUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -234,20 +266,20 @@ async function openRouterReply(promptParts, conversation) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: promptParts.join("\n\n"),
-        },
-        ...conversation,
-      ],
+      model: selectedModel,
+      messages,
+      ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
   });
 
+  let response = await request(model);
+  if (!response.ok && fallbackModel && fallbackModel !== model) {
+    response = await request(fallbackModel);
+  }
+
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`OpenRouter request failed: ${response.status} ${details}`);
+    throw new Error(`${fallbackLabel} failed: ${response.status} ${details}`);
   }
 
   const data = await response.json();
@@ -258,27 +290,14 @@ async function openRouterReply(promptParts, conversation) {
 }
 
 async function openRouterTaskBreakdown({ task, spiciness }) {
-  const response = await fetch(openRouterApiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://127.0.0.1:988",
-      "X-OpenRouter-Title": process.env.OPENROUTER_APP_NAME || "Kin Mental Wellness Companion",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENROUTER_TASK_MODEL || taskBreakdownOpenRouterModel,
-      messages: buildTaskBreakdownMessages({ task, spiciness }),
-      response_format: { type: "json_object" },
-    }),
+  const text = await openRouterChatCompletion({
+    model: getOpenRouterModelForRole(aiModelRoles.adhdTask, process.env) || taskBreakdownOpenRouterModel,
+    messages: buildTaskBreakdownMessages({ task, spiciness }),
+    responseFormat: { type: "json_object" },
+    fallbackLabel: "OpenRouter task breakdown",
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter task breakdown failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return normalizeBreakdownResponse(data.choices?.[0]?.message?.content || "", task);
+  return normalizeBreakdownResponse(text, task);
 }
 
 async function openAiReply(promptParts, conversation) {
@@ -347,20 +366,141 @@ export async function taskBreakdown({ task, spiciness }) {
     : openAiTaskBreakdown({ task, spiciness });
 }
 
-app.get("/api/health", (_req, res) => {
-  res.json({
-    ok: true,
-    ai: getAiProvider(),
-    safetyRouter: safetyRouterVersion,
+export async function classifySafetyWithBackup(input, context = {}) {
+  const deterministic = classifySafety(input, context);
+  if (shouldPauseForSafety(deterministic) || getAiProvider() !== "openrouter") {
+    return deterministic;
+  }
+
+  try {
+    const backup = await openRouterSafetyBackup(input, context);
+    return mergeSafetySignals(deterministic, backup);
+  } catch (error) {
+    console.warn("Safety backup classification failed:", error.message);
+    return deterministic;
+  }
+}
+
+async function openRouterSafetyBackup(input, context = {}) {
+  const text = await openRouterChatCompletion({
+    model: getOpenRouterModelForRole(aiModelRoles.safetyBackup, process.env),
+    messages: [
+      {
+        role: "system",
+        content: [
+          "Classify mental-health safety risk for a wellness support app.",
+          "Return only JSON: {\"category\":\"none|unknown_high_distress|self_harm_ideation|self_harm_intent|suicide_plan_or_means|violence_to_others|abuse_or_exploitation|minor_user_high_risk|psychosis_or_reality_confusion|mania_or_severe_impulsivity|medical_emergency|severe_intoxication_or_overdose\",\"level\":\"none|low|moderate|high|imminent\",\"confidence\":0}",
+          "Escalate only when the text itself indicates risk. Do not downgrade deterministic rules.",
+        ].join("\n"),
+      },
+      {
+        role: "user",
+        content: String(input || "").slice(0, 600),
+      },
+    ],
+    responseFormat: { type: "json_object" },
+    fallbackLabel: "OpenRouter safety backup",
   });
+  const parsed = parseJsonObject(text);
+  return {
+    source: context.source || "ai_chat",
+    category: normalizeSafetyCategory(parsed.category),
+    level: normalizeSafetyLevel(parsed.level),
+    confidence: normalizeConfidence(parsed.confidence),
+    actions: [],
+  };
+}
+
+function mergeSafetySignals(deterministic, backup) {
+  const levelRank = { none: 0, low: 1, moderate: 2, high: 3, imminent: 4 };
+  if (!backup || levelRank[backup.level] <= levelRank[deterministic.level || "none"]) {
+    return deterministic;
+  }
+
+  return {
+    ...deterministic,
+    category: backup.category || deterministic.category,
+    level: backup.level,
+    confidence: Math.max(Number(deterministic.confidence || 0), Number(backup.confidence || 0)),
+    actionTaken: backupActionsForLevel(backup.level),
+    backupClassifier: {
+      provider: "openrouter",
+      model: getOpenRouterModelForRole(aiModelRoles.safetyBackup, process.env),
+    },
+  };
+}
+
+function selectChatModelRole({ text = "", latestCheckIn, supportModes = [] } = {}) {
+  if (isDeepEmotionalSupport({ text, latestCheckIn, supportModes })) return aiModelRoles.deepSupport;
+  if (supportModes.includes("goal_tracking") || supportModes.includes("planning")) return aiModelRoles.goal;
+  return aiModelRoles.normalCoach;
+}
+
+function isDeepEmotionalSupport({ text = "", latestCheckIn, supportModes = [] } = {}) {
+  const lower = String(text || "").toLowerCase();
+  const hasEmotionalMode = supportModes.includes("emotional_support") || supportModes.includes("grounding");
+  const hasDeepSignal =
+    /\b(grief|grieving|trauma|traumatic|depressed|depression|hopeless|worthless|numb|alone|lonely|panic|ashamed|shame|overwhelmed)\b/.test(lower) ||
+    latestCheckIn?.moodScore <= 3 ||
+    latestCheckIn?.anxietyScore >= 8 ||
+    latestCheckIn?.stressScore >= 8;
+  return hasEmotionalMode && hasDeepSignal;
+}
+
+function parseJsonObject(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = String(text || "").match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : {};
+  }
+}
+
+function normalizeSafetyLevel(level) {
+  return ["none", "low", "moderate", "high", "imminent"].includes(level) ? level : "none";
+}
+
+function normalizeSafetyCategory(category) {
+  return [
+    "none",
+    "unknown_high_distress",
+    "self_harm_ideation",
+    "self_harm_intent",
+    "suicide_plan_or_means",
+    "violence_to_others",
+    "abuse_or_exploitation",
+    "minor_user_high_risk",
+    "psychosis_or_reality_confusion",
+    "mania_or_severe_impulsivity",
+    "medical_emergency",
+    "severe_intoxication_or_overdose",
+  ].includes(category)
+    ? category
+    : "none";
+}
+
+function normalizeConfidence(confidence) {
+  const numeric = Number(confidence);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.min(1, Math.max(0, numeric));
+}
+
+function backupActionsForLevel(level) {
+  if (level === "imminent") return ["show_sos", "pause_ai_chat", "show_emergency_services", "show_988_or_local_crisis"];
+  if (level === "high") return ["show_sos", "pause_ai_chat", "ask_direct_safety_question", "show_988_or_local_crisis"];
+  if (level === "moderate") return ["pause_ai_chat", "ask_direct_safety_question", "show_988_or_local_crisis"];
+  if (level === "low") return ["ask_direct_safety_question", "recommend_human_support"];
+  return [];
+}
+
+app.get("/api/health", (_req, res) => {
+  res.json(buildApiStatus());
 });
 
 app.get("/api/runtime/status", async (_req, res) => {
   const status = await getRuntimeStatus({
     api: {
-      ok: true,
-      ai: getAiProvider(),
-      safetyRouter: safetyRouterVersion,
+      ...buildApiStatus(),
     },
     appPort,
     desktop: {
@@ -373,10 +513,10 @@ app.get("/api/runtime/status", async (_req, res) => {
   res.json(status);
 });
 
-app.post("/api/safety/classify", (req, res) => {
+app.post("/api/safety/classify", async (req, res) => {
   const input = typeof req.body.input === "string" ? req.body.input : "";
   const source = typeof req.body.source === "string" ? req.body.source : "ai_chat";
-  res.json(classifySafety(input, { source }));
+  res.json(await classifySafetyWithBackup(input, { source }));
 });
 
 app.post("/api/app-lock/derive", async (req, res) => {

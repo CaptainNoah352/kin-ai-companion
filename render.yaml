@@ -13,9 +13,19 @@ services:
       - key: KIN_ALLOWED_ORIGINS
         value: https://captainnoah352.github.io
       - key: OPENROUTER_MODEL
-        value: openai/gpt-5.2
+        value: google/gemini-3.1-flash-lite
       - key: OPENROUTER_TASK_MODEL
-        value: openrouter/free
+        value: google/gemini-3.1-flash-lite
+      - key: OPENROUTER_SAFETY_BACKUP_MODEL
+        value: google/gemini-3.1-flash-lite
+      - key: OPENROUTER_DEEP_SUPPORT_MODEL
+        value: openai/gpt-5.4-mini
+      - key: OPENROUTER_GOAL_MODEL
+        value: google/gemini-3.1-flash-lite
+      - key: OPENROUTER_SUMMARY_MODEL
+        value: google/gemini-3.1-flash-lite
+      - key: OPENROUTER_INSIGHT_MODEL
+        value: google/gemini-3.1-flash-lite
       - key: OPENROUTER_SITE_URL
         value: https://captainnoah352.github.io/kin-ai-companion/
       - key: OPENROUTER_APP_NAME
