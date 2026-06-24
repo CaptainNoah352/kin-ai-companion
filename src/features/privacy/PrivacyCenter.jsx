@@ -44,10 +44,10 @@ export function PrivacyCenter({
 
   return (
     <section className="privacy-layout">
+      <ProfileSettings profile={profile} onUpdateProfile={onUpdateProfile} />
       {setupChecklist}
       <RemoteAccessPanel />
       {syncCenter}
-      <ProfileSettings profile={profile} onUpdateProfile={onUpdateProfile} />
 
       <section className="surface-section">
         <div className="section-heading">

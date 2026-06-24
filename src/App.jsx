@@ -130,6 +130,7 @@ const utilityNavItems = [
 ];
 
 const phoneUtilityNavItems = [
+  { id: "Privacy", label: "Profile", icon: UserRound, navKey: "Profile" },
   ...utilityNavItems,
   { id: "Privacy", label: "Remote", icon: Router, navKey: "Remote" },
 ];
@@ -637,6 +638,19 @@ export default function App() {
       [normalizedAppSpace]: tabId,
     }));
     setPhoneMoreOpen(false);
+  }
+
+  function openProfileSettings() {
+    if (typeof window !== "undefined") {
+      const scrollKey = getPageScrollKey(normalizedAppSpace, "Privacy");
+      const scrollMap = readStorage(storageKeys.pageScroll, {});
+      writeStorage(storageKeys.pageScroll, {
+        ...scrollMap,
+        [scrollKey]: 0,
+      });
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+    }
+    selectTab("Privacy");
   }
 
   function openTabInAppSpace(spaceId, tabId) {
@@ -1820,7 +1834,7 @@ export default function App() {
   );
 
   if (isPhoneShell) {
-    const showInstallHint = shouldShowPhoneInstallHint({ dismissed: installHintDismissed });
+    const showInstallHint = activeTab !== "Privacy" && shouldShowPhoneInstallHint({ dismissed: installHintDismissed });
     return (
       <main className={`phone-shell phone-shell--${slugify(activeTab)} ${appSpaceClass}`}>
         <header className="phone-header">
@@ -1874,7 +1888,7 @@ export default function App() {
                     className={activeTab === item.id && !item.navKey ? "phone-more-item active" : "phone-more-item"}
                     type="button"
                     key={item.navKey || item.id}
-                    onClick={() => selectTab(item.id)}
+                    onClick={() => (item.navKey === "Profile" ? openProfileSettings() : selectTab(item.id))}
                   >
                     <Icon size={18} />
                     {item.label}
