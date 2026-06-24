@@ -145,6 +145,19 @@ function createWindow() {
     mainWindow?.show();
   });
 
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
+  mainWindow.webContents.setZoomFactor(1);
+  mainWindow.webContents.on("before-input-event", (event, input) => {
+    const key = String(input.key || "");
+    const isZoomShortcut =
+      (input.control || input.meta) && ["+", "=", "-", "_", "0"].includes(key);
+
+    if (isZoomShortcut) {
+      event.preventDefault();
+      mainWindow?.webContents.setZoomFactor(1);
+    }
+  });
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isGoogleAuthUrl(url)) {
       return {

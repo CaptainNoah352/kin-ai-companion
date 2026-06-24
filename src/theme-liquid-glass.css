@@ -783,6 +783,69 @@ input[type="radio"] {
 }
 
 /* ---------------------------------------------------------------------
+   8c. Mobile chat sizing — the fixed-height chat column was letting the
+   chrome (title, chip row, Memory card) get vertically compressed, which
+   clipped the chips and crushed the message list. Make ONLY the message
+   list flex, trim the redundant title, and compact the Memory shortcut.
+   --------------------------------------------------------------------- */
+.phone-shell--chat .coach-section,
+.phone-shell--coach .coach-section {
+  gap: 8px;
+  padding: 10px;
+}
+
+.phone-shell--chat .coach-section > *,
+.phone-shell--coach .coach-section > * {
+  flex: 0 0 auto;
+}
+
+.phone-shell--chat .coach-section .chat-window,
+.phone-shell--coach .coach-section .chat-window {
+  flex: 1 1 auto;
+  min-height: 140px;
+}
+
+/* the phone header already shows the screen title — drop the duplicate,
+   keep the slim safety disclaimer */
+.phone-shell--chat .coach-section > .section-heading h2,
+.phone-shell--coach .coach-section > .section-heading h2 {
+  display: none;
+}
+.phone-shell--chat .coach-section > .section-heading,
+.phone-shell--coach .coach-section > .section-heading {
+  margin-bottom: 0;
+}
+
+/* keep the mode chips fully visible inside their horizontal scroller */
+.phone-shell .chat-mode-selector {
+  flex: 0 0 auto;
+  padding-block: 3px;
+  overflow-y: hidden;
+}
+.phone-shell .chat-mode-chip {
+  min-height: 40px;
+}
+
+/* compact the Memory shortcut so it doesn't dominate the conversation */
+.phone-shell--chat .coach-memory-card,
+.phone-shell--coach .coach-memory-card {
+  padding: 10px;
+  gap: 6px 10px;
+}
+.phone-shell--chat .coach-memory-card__actions .primary-button,
+.phone-shell--chat .coach-memory-card__actions .secondary-button,
+.phone-shell--coach .coach-memory-card__actions .primary-button,
+.phone-shell--coach .coach-memory-card__actions .secondary-button {
+  min-height: 38px;
+}
+
+/* a touch more separation under the pinned composer */
+.phone-shell--chat .coach-section > .ghost-button--inline,
+.phone-shell--coach .coach-section > .ghost-button--inline {
+  min-height: 40px;
+}
+
+/* ---------------------------------------------------------------------
    9. Accessibility + performance fallbacks
    --------------------------------------------------------------------- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

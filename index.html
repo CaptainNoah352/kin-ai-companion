@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#05140f" />
     <meta name="application-name" content="Kin" />
     <meta name="apple-mobile-web-app-title" content="Kin" />
@@ -15,6 +18,41 @@
     <link rel="apple-touch-icon" sizes="180x180" href="kin-icon-180.png" />
     <link rel="manifest" href="site.webmanifest" />
     <title>Kin - AI Companion</title>
+    <script>
+      (function () {
+        function preventZoom(event) {
+          event.preventDefault();
+        }
+
+        window.addEventListener(
+          "wheel",
+          function (event) {
+            if (event.ctrlKey || event.metaKey) preventZoom(event);
+          },
+          { passive: false },
+        );
+
+        window.addEventListener(
+          "keydown",
+          function (event) {
+            if (!(event.ctrlKey || event.metaKey)) return;
+            if (["+", "=", "-", "_", "0"].includes(event.key)) preventZoom(event);
+          },
+          { passive: false },
+        );
+
+        window.addEventListener("gesturestart", preventZoom, { passive: false });
+        window.addEventListener("gesturechange", preventZoom, { passive: false });
+        window.addEventListener("gestureend", preventZoom, { passive: false });
+        window.addEventListener(
+          "touchmove",
+          function (event) {
+            if (event.touches && event.touches.length > 1) preventZoom(event);
+          },
+          { passive: false },
+        );
+      })();
+    </script>
     <!-- kin-static-loader-start -->
     <script>
       (function () {
