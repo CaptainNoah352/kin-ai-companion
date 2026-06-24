@@ -1,3 +1,5 @@
+const defaultKinApiBaseUrl = "https://kin-ai-companion.onrender.com";
+
 export function getKinHostingMode() {
   const injectedMode = globalThis.__KIN_HOSTING_MODE__;
   if (typeof injectedMode === "string" && injectedMode.trim()) return injectedMode.trim();
@@ -8,7 +10,7 @@ export function getKinApiBaseUrl() {
   const injectedBaseUrl = globalThis.__KIN_API_BASE_URL__;
   const baseUrl = typeof injectedBaseUrl === "string" && injectedBaseUrl.trim()
     ? injectedBaseUrl
-    : import.meta.env?.VITE_KIN_API_BASE_URL || "";
+    : import.meta.env?.VITE_KIN_API_BASE_URL || (isGithubPagesRuntime() ? defaultKinApiBaseUrl : "");
   return normalizeKinApiBaseUrl(baseUrl);
 }
 

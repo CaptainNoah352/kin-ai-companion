@@ -36,7 +36,7 @@ test("runtime mode defaults to local API support", () => {
   }
 });
 
-test("runtime mode disables local API on GitHub Pages", () => {
+test("runtime mode uses the hosted Kin API default on GitHub Pages", () => {
   const previousMode = globalThis.__KIN_HOSTING_MODE__;
   const previousApiBaseUrl = globalThis.__KIN_API_BASE_URL__;
 
@@ -47,7 +47,9 @@ test("runtime mode disables local API on GitHub Pages", () => {
     assert.equal(getKinHostingMode(), "github-pages");
     assert.equal(isGithubPagesRuntime(), true);
     assert.equal(shouldUseLocalApi(), false);
-    assert.equal(shouldUseKinApiBackend(), false);
+    assert.equal(getKinApiBaseUrl(), "https://kin-ai-companion.onrender.com");
+    assert.equal(shouldUseKinApiBackend(), true);
+    assert.equal(buildKinApiUrl("/api/health"), "https://kin-ai-companion.onrender.com/api/health");
   } finally {
     restoreValue("__KIN_HOSTING_MODE__", previousMode);
     restoreValue("__KIN_API_BASE_URL__", previousApiBaseUrl);
@@ -69,6 +71,7 @@ test("github.io hostname is treated as static hosted mode", () => {
 
     assert.equal(isGithubPagesRuntime(), true);
     assert.equal(shouldUseLocalApi(), false);
+    assert.equal(buildKinApiUrl("/api/health"), "https://kin-ai-companion.onrender.com/api/health");
   } finally {
     restoreGlobal("location", previousLocation);
     restoreValue("__KIN_HOSTING_MODE__", previousMode);

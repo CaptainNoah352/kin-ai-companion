@@ -117,7 +117,7 @@ The hosted GitHub Pages app is static. It does not run `server.mjs` and must not
 For the shared friend build:
 
 1. The app includes the public Google OAuth web client id for this Kin deployment. If you fork or host your own Google OAuth app, add an Actions/Pages variable named `VITE_GOOGLE_CLIENT_ID` with your public Google OAuth web client id.
-2. During beta, deploy the Kin API on Render, then add an Actions/Pages variable named `VITE_KIN_API_BASE_URL` with the Render service origin, such as `https://kin-api.onrender.com`. Do not include a trailing `/api`.
+2. During beta, deploy the Kin API on Render. This deployment defaults to `https://kin-ai-companion.onrender.com`; forks can override it with an Actions/Pages variable named `VITE_KIN_API_BASE_URL`. Do not include a trailing `/api`.
 3. In Google Cloud, keep the OAuth app external and add `https://<your-github-username>.github.io` to Authorized JavaScript origins.
 4. Enable Pages with GitHub Actions. The included workflow builds with `VITE_KIN_HOSTING=github-pages`.
 5. Share the Pages URL, usually `https://<your-github-username>.github.io/<repo-name>/`.
