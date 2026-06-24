@@ -81,6 +81,21 @@ export function restoreKinDataFromVault(kinData = {}) {
   });
 }
 
+export function mergeUnsyncedLocalChatData(vaultKinData = {}, localKinData = {}) {
+  return {
+    ...vaultKinData,
+    [storageKeys.messages]: chooseLongerChatHistory(vaultKinData[storageKeys.messages], localKinData[storageKeys.messages]),
+    [storageKeys.wellnessMessages]: chooseLongerChatHistory(
+      vaultKinData[storageKeys.wellnessMessages] ?? vaultKinData[storageKeys.messages],
+      localKinData[storageKeys.wellnessMessages] ?? localKinData[storageKeys.messages],
+    ),
+    [storageKeys.adhdMessages]: chooseLongerChatHistory(
+      vaultKinData[storageKeys.adhdMessages],
+      localKinData[storageKeys.adhdMessages],
+    ),
+  };
+}
+
 export function readLocalEncryptedVault() {
   return readStorage(storageKeys.encryptedVault, null);
 }
@@ -118,6 +133,12 @@ export function createVaultContentSignature({ kinData = {}, userOpenRouter = def
 
 function stripLocalOnlyData(data) {
   return Object.fromEntries(Object.entries(data || {}).filter(([key]) => !localOnlyExportKeys.has(key)));
+}
+
+function chooseLongerChatHistory(vaultMessages, localMessages) {
+  const vaultValues = Array.isArray(vaultMessages) ? vaultMessages : [];
+  const localValues = Array.isArray(localMessages) ? localMessages : [];
+  return localValues.length > vaultValues.length ? localValues : vaultValues;
 }
 
 function isAfter(left, right) {

@@ -5,6 +5,7 @@ import {
   createDefaultDriveSync,
   createVaultContentSignature,
   detectVaultConflict,
+  mergeUnsyncedLocalChatData,
   redactUserOpenRouter,
 } from "../src/features/sync/vaultDataService.js";
 import { storageKeys } from "../src/lib/storage.js";
@@ -132,4 +133,26 @@ test("vault content signature excludes local-only metadata and changes with priv
   assert.equal(first.includes("driveSync"), false);
   assert.equal(first.includes("googleSession"), false);
   assert.equal(first.includes("pageScroll"), false);
+});
+
+test("local vault restore preserves longer unsynced local chat histories", () => {
+  const merged = mergeUnsyncedLocalChatData(
+    {
+      [storageKeys.wellnessMessages]: [{ role: "user", content: "older saved chat" }],
+      [storageKeys.adhdMessages]: [{ role: "user", content: "saved adhd chat" }],
+    },
+    {
+      [storageKeys.wellnessMessages]: [
+        { role: "user", content: "older saved chat" },
+        { role: "assistant", content: "new reply before force close" },
+      ],
+      [storageKeys.adhdMessages]: [],
+    },
+  );
+
+  assert.deepEqual(merged[storageKeys.wellnessMessages], [
+    { role: "user", content: "older saved chat" },
+    { role: "assistant", content: "new reply before force close" },
+  ]);
+  assert.deepEqual(merged[storageKeys.adhdMessages], [{ role: "user", content: "saved adhd chat" }]);
 });

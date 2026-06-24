@@ -93,6 +93,7 @@ import {
   createDefaultDriveSync,
   createDefaultUserOpenRouter,
   detectVaultConflict,
+  mergeUnsyncedLocalChatData,
   readLocalEncryptedVault,
   redactUserOpenRouter,
   restoreKinDataFromVault,
@@ -104,6 +105,7 @@ import "./theme-liquid-glass.css";
 
 const appLockSessionKey = "kin.v2.appLock.unlockedAt";
 const googleDriveTokenSessionKey = "kin.v2.googleDrive.accessToken";
+const localVaultSnapshotDebounceMs = 500;
 const autoSyncDebounceMs = 5000;
 
 const wellnessNavItems = [
@@ -232,6 +234,10 @@ export default function App() {
   const autoSyncTimerRef = useRef(null);
   const autoSyncInFlightRef = useRef(false);
   const lastVaultContentSignatureRef = useRef("");
+  const localVaultSnapshotTimerRef = useRef(null);
+  const localVaultSnapshotInFlightRef = useRef(false);
+  const lastLocalVaultSnapshotSignatureRef = useRef("");
+  const queuedLocalVaultSnapshotRef = useRef(null);
   const skipNextAutoSyncRef = useRef(false);
   const syncAfterUnlockRef = useRef(false);
   const hadStoredNavigationRef = useRef(hasStoredNavigationState());
@@ -473,6 +479,62 @@ export default function App() {
 
   useEffect(() => {
     if (!googleSession?.email || !vaultUnlocked || !vaultPasscode || pendingRemoteVault) return undefined;
+    const kinData = getCurrentKinDataSnapshot();
+    const signature = getVaultContentSignature(kinData, userOpenRouter);
+    if (signature === lastLocalVaultSnapshotSignatureRef.current) return undefined;
+
+    window.clearTimeout(localVaultSnapshotTimerRef.current);
+    localVaultSnapshotTimerRef.current = window.setTimeout(() => {
+      void persistLocalVaultSnapshot(kinData, userOpenRouter, signature);
+    }, localVaultSnapshotDebounceMs);
+
+    function flushLocalVaultSnapshot() {
+      window.clearTimeout(localVaultSnapshotTimerRef.current);
+      void persistLocalVaultSnapshot(kinData, userOpenRouter, signature);
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) flushLocalVaultSnapshot();
+    }
+
+    window.addEventListener("pagehide", flushLocalVaultSnapshot);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearTimeout(localVaultSnapshotTimerRef.current);
+      window.removeEventListener("pagehide", flushLocalVaultSnapshot);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [
+    consent,
+    profile,
+    activeAppSpace,
+    appSpaceTabs,
+    wellnessMessages,
+    adhdMessages,
+    adhdTasks,
+    goals,
+    startSessions,
+    weeklyReviews,
+    checkIns,
+    journalEntries,
+    completedModules,
+    moduleDrafts,
+    carePlan,
+    safetySignals,
+    safetyPlan,
+    memory,
+    appLock,
+    auditEvents,
+    installHintDismissed,
+    userOpenRouter,
+    googleSession?.email,
+    vaultUnlocked,
+    vaultPasscode,
+    pendingRemoteVault,
+  ]);
+
+  useEffect(() => {
+    if (!googleSession?.email || !vaultUnlocked || !vaultPasscode || pendingRemoteVault) return undefined;
     const normalizedSync = createDefaultDriveSync(driveSync);
     if (!normalizedSync.enabled || !normalizedSync.autoSyncEnabled) return undefined;
 
@@ -552,7 +614,7 @@ export default function App() {
       try {
         const passcode = await readTrustedVaultPasscode(googleSession);
         if (!passcode || cancelled) return;
-        const payload = await importVaultEnvelope(localEnvelope, passcode);
+        const payload = await importVaultEnvelope(localEnvelope, passcode, {}, { preserveUnsyncedLocalChat: true });
         if (cancelled) return;
         syncAfterUnlockRef.current = true;
         setVaultPasscode(passcode);
@@ -841,6 +903,30 @@ export default function App() {
     lastVaultContentSignatureRef.current = getVaultContentSignature(kinData, nextUserOpenRouter);
   }
 
+  async function persistLocalVaultSnapshot(kinData, nextUserOpenRouter = userOpenRouter, signature = "") {
+    if (!vaultPasscode) return;
+    if (localVaultSnapshotInFlightRef.current) {
+      queuedLocalVaultSnapshotRef.current = { kinData, userOpenRouter: nextUserOpenRouter, signature };
+      return;
+    }
+
+    localVaultSnapshotInFlightRef.current = true;
+    try {
+      await persistVault(vaultPasscode, nextUserOpenRouter, kinData, { updateSyncState: false });
+      lastLocalVaultSnapshotSignatureRef.current =
+        signature || getVaultContentSignature(kinData, nextUserOpenRouter);
+    } catch (error) {
+      setSyncError(error.message || "Local encrypted vault snapshot could not be saved.");
+    } finally {
+      localVaultSnapshotInFlightRef.current = false;
+      const queued = queuedLocalVaultSnapshotRef.current;
+      queuedLocalVaultSnapshotRef.current = null;
+      if (queued && queued.signature !== lastLocalVaultSnapshotSignatureRef.current) {
+        void persistLocalVaultSnapshot(queued.kinData, queued.userOpenRouter, queued.signature);
+      }
+    }
+  }
+
   function applyKinDataFromVault(kinData = {}) {
     restoreKinDataFromVault(kinData);
     setConsent(kinData.consent ?? defaultConsent);
@@ -866,7 +952,12 @@ export default function App() {
     setInstallHintDismissed(Boolean(kinData.installHintDismissed));
   }
 
-  async function persistVault(passcode = vaultPasscode, nextUserOpenRouter = userOpenRouter, kinData = getCurrentKinDataSnapshot()) {
+  async function persistVault(
+    passcode = vaultPasscode,
+    nextUserOpenRouter = userOpenRouter,
+    kinData = getCurrentKinDataSnapshot(),
+    { updateSyncState = true } = {},
+  ) {
     const syncForPayload = createDefaultDriveSync(driveSync);
     const payload = buildVaultPayload({
       kinData,
@@ -875,22 +966,42 @@ export default function App() {
     });
     const envelope = await createEncryptedVault(payload, passcode);
     writeLocalEncryptedVault(envelope);
-    setDriveSync((current) => ({
-      ...createDefaultDriveSync({ ...current, deviceId: current?.deviceId || syncForPayload.deviceId }),
-      enabled: true,
-      lastLocalSnapshotAt: payload.updatedAt,
-      status: "local-ready",
-      error: "",
-    }));
+    lastLocalVaultSnapshotSignatureRef.current = getVaultContentSignature(payload.kinData || {}, payload.userOpenRouter);
+    if (updateSyncState) {
+      setDriveSync((current) => ({
+        ...createDefaultDriveSync({ ...current, deviceId: current?.deviceId || syncForPayload.deviceId }),
+        enabled: true,
+        lastLocalSnapshotAt: payload.updatedAt,
+        status: "local-ready",
+        error: "",
+      }));
+    }
     return { payload, envelope };
   }
 
-  async function importVaultEnvelope(envelope, passcode, remoteMetadata = {}) {
+  async function importVaultEnvelope(envelope, passcode, remoteMetadata = {}, { preserveUnsyncedLocalChat = false } = {}) {
     const payload = await openEncryptedVault(envelope, passcode);
-    applyKinDataFromVault(payload.kinData || {});
+    const restoredKinData = preserveUnsyncedLocalChat
+      ? mergeUnsyncedLocalChatData(payload.kinData || {}, listStoredKinData())
+      : payload.kinData || {};
+    let restoredPayload = payload;
+    applyKinDataFromVault(restoredKinData);
     setUserOpenRouter(createDefaultUserOpenRouter(payload.userOpenRouter));
-    writeLocalEncryptedVault(envelope);
-    rememberVaultSignature(payload.kinData || {}, payload.userOpenRouter);
+    if (restoredKinData === payload.kinData) {
+      writeLocalEncryptedVault(envelope);
+    } else {
+      restoredPayload = buildVaultPayload({
+        kinData: restoredKinData,
+        userOpenRouter: payload.userOpenRouter,
+        driveSync,
+      });
+      writeLocalEncryptedVault(await createEncryptedVault(restoredPayload, passcode));
+    }
+    rememberVaultSignature(restoredPayload.kinData || restoredKinData, restoredPayload.userOpenRouter);
+    lastLocalVaultSnapshotSignatureRef.current = getVaultContentSignature(
+      restoredPayload.kinData || restoredKinData,
+      restoredPayload.userOpenRouter,
+    );
     skipNextAutoSyncRef.current = true;
     const hasRemoteMetadata = Boolean(remoteMetadata.id);
     setDriveSync((current) => ({
@@ -898,12 +1009,12 @@ export default function App() {
       enabled: true,
       fileId: remoteMetadata.id || current.fileId || "",
       lastSyncedAt: remoteMetadata.modifiedTime || current.lastSyncedAt || "",
-      lastLocalSnapshotAt: payload.updatedAt || current.lastLocalSnapshotAt || "",
+      lastLocalSnapshotAt: restoredPayload.updatedAt || current.lastLocalSnapshotAt || "",
       lastRemoteModifiedAt: remoteMetadata.modifiedTime || current.lastRemoteModifiedAt || "",
       status: hasRemoteMetadata ? "synced" : "local-ready",
       error: "",
     }));
-    return payload;
+    return restoredPayload;
   }
 
   async function syncVaultWithDrive({
@@ -1084,7 +1195,7 @@ export default function App() {
     try {
       const localEnvelope = readLocalEncryptedVault();
       if (localEnvelope) {
-        const payload = await importVaultEnvelope(localEnvelope, passcode);
+        const payload = await importVaultEnvelope(localEnvelope, passcode, {}, { preserveUnsyncedLocalChat: true });
         syncAfterUnlockRef.current = true;
         setVaultPasscode(passcode);
         setVaultUnlocked(true);
@@ -1327,7 +1438,10 @@ export default function App() {
     setSyncMessage("");
     setSyncError("");
     window.clearTimeout(autoSyncTimerRef.current);
+    window.clearTimeout(localVaultSnapshotTimerRef.current);
     lastVaultContentSignatureRef.current = "";
+    lastLocalVaultSnapshotSignatureRef.current = "";
+    queuedLocalVaultSnapshotRef.current = null;
     skipNextAutoSyncRef.current = false;
     syncAfterUnlockRef.current = false;
   }
@@ -1386,9 +1500,12 @@ export default function App() {
     setPendingRemoteVault(null);
     saveDriveAccessToken("");
     lastVaultContentSignatureRef.current = "";
+    lastLocalVaultSnapshotSignatureRef.current = "";
+    queuedLocalVaultSnapshotRef.current = null;
     skipNextAutoSyncRef.current = false;
     syncAfterUnlockRef.current = false;
     window.clearTimeout(autoSyncTimerRef.current);
+    window.clearTimeout(localVaultSnapshotTimerRef.current);
     setAuditEvents((events) => appendAuditEvent(events, "data_deleted", { scope: "mental_health_content" }));
   }
 
@@ -1424,9 +1541,12 @@ export default function App() {
     setUserOpenRouter(createDefaultUserOpenRouter());
     saveDriveAccessToken("");
     lastVaultContentSignatureRef.current = "";
+    lastLocalVaultSnapshotSignatureRef.current = "";
+    queuedLocalVaultSnapshotRef.current = null;
     skipNextAutoSyncRef.current = false;
     syncAfterUnlockRef.current = false;
     window.clearTimeout(autoSyncTimerRef.current);
+    window.clearTimeout(localVaultSnapshotTimerRef.current);
     setSyncMessage("");
     setSyncError("");
     setIsPrivacyLocked(false);
