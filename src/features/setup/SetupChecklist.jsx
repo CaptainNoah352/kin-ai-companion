@@ -30,20 +30,22 @@ export function SetupChecklist({
     {
       id: "vault",
       icon: KeyRound,
-      label: hosted ? "Optional backup vault" : "Encrypted vault",
-      required: !hosted,
-      done: Boolean(vaultUnlocked),
+      label: hosted ? "App passcode and vault" : "Encrypted vault",
+      required: true,
+      done: hosted ? Boolean(vaultUnlocked && normalizedLock.enabled) : Boolean(vaultUnlocked),
       detail: vaultUnlocked
-        ? "Vault is unlocked on this device."
+        ? hosted
+          ? "The same passcode unlocks Kin and the encrypted vault."
+          : "Vault is unlocked on this device."
         : hosted
-          ? "Optional: create this later if you want encrypted backup and restore."
+          ? "Create the app passcode to set up the required encrypted vault."
           : "Create or unlock the vault with your passcode.",
     },
     {
       id: "drive",
       icon: ShieldCheck,
-      label: hosted ? "Optional Drive backup" : "Drive sync",
-      required: !hosted,
+      label: hosted ? "Drive vault" : "Drive sync",
+      required: true,
       done: Boolean(normalizedSync.enabled && normalizedSync.fileId && normalizedSync.status !== "error" && normalizedSync.status !== "conflict"),
       detail: driveSyncDetail(normalizedSync, hasDriveAccessToken, hosted),
     },
@@ -67,12 +69,14 @@ export function SetupChecklist({
       id: "lock",
       icon: Lock,
       label: "App lock",
-      required: false,
+      required: !hosted,
+      visible: !hosted,
       done: Boolean(normalizedLock.enabled),
       detail: normalizedLock.enabled ? "Private screens lock after idle or refresh." : "Optional, recommended before sharing devices.",
     },
   ];
-  const requiredItems = hosted ? items.filter((item) => item.required) : items;
+  const visibleItems = items.filter((item) => item.visible !== false);
+  const requiredItems = hosted ? visibleItems.filter((item) => item.required) : visibleItems;
   const completeCount = requiredItems.filter((item) => item.done).length;
   const nextItem = requiredItems.find((item) => !item.done);
 
@@ -83,7 +87,7 @@ export function SetupChecklist({
           <h2>{hosted ? "Account and backup" : "Setup checklist"}</h2>
           <p>
             {hosted
-              ? "Google sign-in is the only required step. Encrypted Drive backup is optional."
+              ? "Google sign-in plus one passcode are required. That passcode unlocks Kin and encrypts the vault."
               : `${completeCount} of ${items.length} ready for private daily use and GitHub sharing.`}
           </p>
         </div>
@@ -91,7 +95,7 @@ export function SetupChecklist({
       </div>
 
       <div className="setup-checklist__items">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           return (
             <article className={item.done ? "setup-step complete" : "setup-step"} key={item.id}>
@@ -111,7 +115,7 @@ export function SetupChecklist({
         {nextItem
           ? nextItem.detail
           : hosted
-            ? "You can use Kin now. Set up encrypted Drive backup later only if you want sync and restore."
+            ? "Kin is ready. The app passcode and encrypted Drive vault are linked."
             : "Kin is ready for private synced use."}
       </p>
     </section>
@@ -121,7 +125,7 @@ export function SetupChecklist({
 function driveSyncDetail(sync, hasDriveAccessToken, hosted = false) {
   if (sync.status === "conflict") return "Choose Drive copy or this device copy.";
   if (!sync.enabled || !sync.fileId) {
-    return hosted ? "Optional: tap Sync now after setting up a backup vault." : "Tap Sync now after unlocking the vault.";
+    return hosted ? "Create the required vault during passcode setup." : "Tap Sync now after unlocking the vault.";
   }
   if (sync.status === "needs-google-session" || !hasDriveAccessToken) return "Tap Sync now once to refresh Drive access.";
   if (sync.status === "error") return sync.error || "Drive sync needs attention.";

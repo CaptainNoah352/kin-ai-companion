@@ -164,7 +164,7 @@ function AppLockControls({
   }
 
   function validateMatch(passcode, confirmation) {
-    if (passcode.length < 6) return "Use at least 6 characters.";
+    if (passcode.length < 8) return "Use at least 8 characters.";
     if (passcode !== confirmation) return "Passcodes do not match.";
     return "";
   }
@@ -201,7 +201,7 @@ function AppLockControls({
       {!normalized.enabled ? (
         <div className="form-grid form-grid--two">
           <label className="field-block">
-            <span>New passcode</span>
+            <span>New app and vault passcode</span>
             <input
               type="password"
               value={setupPasscode}
@@ -230,7 +230,7 @@ function AppLockControls({
               })
             }
           >
-            Enable app lock
+            Set app and vault passcode
           </button>
         </div>
       ) : (
@@ -251,7 +251,7 @@ function AppLockControls({
               />
             </label>
             <label className="field-block">
-              <span>New passcode</span>
+              <span>New app and vault passcode</span>
               <input
                 type="password"
                 value={newPasscode}
@@ -283,7 +283,7 @@ function AppLockControls({
                 })
               }
             >
-              Change passcode
+              Change app and vault passcode
             </button>
             <button
               className="danger-button"

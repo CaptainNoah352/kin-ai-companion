@@ -202,7 +202,7 @@ function HostedAccessPanel() {
       <div className="remote-recovery-panel">
         <div>
           <strong>Friend setup</strong>
-          <p>Share the public Kin URL. Friends use their own Google login, their own vault passcode, and their own optional OpenRouter key.</p>
+          <p>Share the public Kin URL. Friends use their own Google login and one required app passcode that also encrypts their Drive vault.</p>
         </div>
         <code>{origin || "GitHub Pages"}</code>
       </div>

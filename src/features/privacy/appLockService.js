@@ -117,8 +117,8 @@ function normalizeTimeout(timeoutMinutes) {
 }
 
 function validatePasscode(passcode) {
-  if (typeof passcode !== "string" || passcode.length < 6) {
-    throw new Error("Passcode must be at least 6 characters.");
+  if (typeof passcode !== "string" || passcode.length < 8) {
+    throw new Error("Passcode must be at least 8 characters.");
   }
 }
 
