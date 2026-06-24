@@ -850,6 +850,36 @@ input[type="radio"] {
   min-height: 40px;
 }
 
+/* compact mode menu (replaces the chip row on phone) */
+.chat-mode-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  max-width: 100%;
+}
+.chat-mode-select__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.chat-mode-select select {
+  min-height: 36px;
+  padding: 0 32px 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background-color: var(--glass-row);
+  color: var(--space-accent-text);
+  font-size: 13px;
+  font-weight: 850;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236fe3d6' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
 /* slim, single-line mode suggestion on phone */
 .phone-shell .mode-suggestion {
   display: flex;

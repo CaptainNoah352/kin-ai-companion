@@ -40,6 +40,7 @@ export function AiCoachChat({
   const [isSending, setIsSending] = useState(false);
   const [modeSuggestion, setModeSuggestion] = useState(null);
   const [apiNotice, setApiNotice] = useState("");
+  const isPhone = useMediaQuery("(max-width: 700px)");
   const endRef = useRef(null);
   const lastAutoSavedRef = useRef("");
   const visibleMessages = messages.length ? messages : starterMessages;
@@ -216,20 +217,33 @@ export function AiCoachChat({
         </p>
       </div>
 
-      <div className="chat-mode-selector" role="radiogroup" aria-label="Chat support mode">
-        {chatModes.map((mode) => (
-          <button
-            className={chatMode === mode.id ? "chat-mode-chip active" : "chat-mode-chip"}
-            type="button"
-            role="radio"
-            aria-checked={chatMode === mode.id}
-            key={mode.id}
-            onClick={() => onChatModeChange?.(mode.id)}
-          >
-            {mode.label}
-          </button>
-        ))}
-      </div>
+      {isPhone ? (
+        <label className="chat-mode-select">
+          <span className="chat-mode-select__label">Mode</span>
+          <select value={chatMode} onChange={(event) => onChatModeChange?.(event.target.value)} aria-label="Chat support mode">
+            {chatModes.map((mode) => (
+              <option key={mode.id} value={mode.id}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <div className="chat-mode-selector" role="radiogroup" aria-label="Chat support mode">
+          {chatModes.map((mode) => (
+            <button
+              className={chatMode === mode.id ? "chat-mode-chip active" : "chat-mode-chip"}
+              type="button"
+              role="radio"
+              aria-checked={chatMode === mode.id}
+              key={mode.id}
+              onClick={() => onChatModeChange?.(mode.id)}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {modeSuggestion && (
         <div className="mode-suggestion" aria-live="polite">
@@ -318,4 +332,22 @@ function friendlyModuleName(moduleId) {
     .replace("54321", "5-4-3-2-1")
     .replaceAll("-", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(query).matches : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    function handleChange() {
+      setMatches(media.matches);
+    }
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, [query]);
+
+  return matches;
 }
