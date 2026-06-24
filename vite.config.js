@@ -38,15 +38,6 @@ export default defineConfig({
   root: projectRoot,
   base,
   plugins: [kinHtmlEntryPlugin(), react()],
-  build: {
-    rollupOptions: {
-      output: {
-        entryFileNames: "assets/[name].js",
-        chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name][extname]",
-      },
-    },
-  },
   server: {
     port: 988,
     strictPort: true,
