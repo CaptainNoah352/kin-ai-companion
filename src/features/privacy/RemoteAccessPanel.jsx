@@ -1,6 +1,11 @@
 import { AlertTriangle, Clock, Copy, ExternalLink, RefreshCw, Router, Server, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
-import { isGithubPagesRuntime } from "../../lib/runtimeMode.js";
+import {
+  buildKinApiUrl,
+  getKinApiBaseUrl,
+  isGithubPagesRuntime,
+  isKinApiBaseUrlStaticHost,
+} from "../../lib/runtimeMode.js";
 
 export function RemoteAccessPanel() {
   if (isGithubPagesRuntime()) return <HostedAccessPanel />;
@@ -17,7 +22,7 @@ function LocalRemoteAccessPanel() {
     setLoadState("loading");
     setError("");
     try {
-      const response = await fetch("/api/runtime/status");
+      const response = await fetch(buildKinApiUrl("/api/runtime/status"));
       if (!response.ok) throw new Error(`Runtime status returned HTTP ${response.status}.`);
       setStatus(await response.json());
       setLoadState("ready");
@@ -119,7 +124,58 @@ function LocalRemoteAccessPanel() {
 }
 
 function HostedAccessPanel() {
+  const [apiStatus, setApiStatus] = useState("checking");
+  const [apiMessage, setApiMessage] = useState("");
   const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const apiBaseUrl = getKinApiBaseUrl();
+
+  useEffect(() => {
+    if (!apiBaseUrl) {
+      setApiStatus("not-configured");
+      setApiMessage("No shared Kin API backend is configured. Browser OpenRouter keys or demo mode can still work.");
+      return;
+    }
+    if (isKinApiBaseUrlStaticHost()) {
+      setApiStatus("misconfigured");
+      setApiMessage("VITE_KIN_API_BASE_URL points at GitHub Pages. It must point at a deployed server.mjs API origin.");
+      return;
+    }
+
+    let cancelled = false;
+    async function loadHostedApiStatus() {
+      setApiStatus("checking");
+      setApiMessage("");
+      try {
+        const response = await fetch(buildKinApiUrl("/api/health"));
+        if (cancelled) return;
+        if (response.status === 404) {
+          setApiStatus("404");
+          setApiMessage("The configured API origin returned HTTP 404 for /api/health.");
+          return;
+        }
+        if (!response.ok) {
+          setApiStatus("offline");
+          setApiMessage(`The configured API origin returned HTTP ${response.status}.`);
+          return;
+        }
+        const data = await response.json().catch(() => ({}));
+        setApiStatus(data.ai || "online");
+        setApiMessage("The configured API backend responded to /api/health.");
+      } catch (error) {
+        if (cancelled) return;
+        setApiStatus("offline");
+        setApiMessage(error.message || "The configured API backend could not be reached.");
+      }
+    }
+
+    loadHostedApiStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl]);
+
+  const apiValue = hostedApiStatusLabel(apiStatus);
+
   return (
     <section className="surface-section remote-access-panel">
       <div className="section-heading">
@@ -132,10 +188,16 @@ function HostedAccessPanel() {
 
       <div className="remote-status-grid" aria-live="polite">
         <StatusPill icon={ShieldCheck} label="Hosting" value="GitHub Pages" />
-        <StatusPill icon={Server} label="Local API" value="Not required" />
+        <StatusPill icon={Server} label="API backend" value={apiValue} />
         <StatusPill icon={Router} label="Accounts" value="Google-owned" />
         <StatusPill icon={Wifi} label="Sync" value="Drive vault" />
       </div>
+
+      {apiMessage && (
+        <div className={apiStatus === "openrouter" || apiStatus === "openai" || apiStatus === "demo" || apiStatus === "online" ? "notice-strip" : "notice-strip notice-strip--warning"}>
+          {apiMessage}
+        </div>
+      )}
 
       <div className="remote-recovery-panel">
         <div>
@@ -144,6 +206,16 @@ function HostedAccessPanel() {
         </div>
         <code>{origin || "GitHub Pages"}</code>
       </div>
+
+      {apiBaseUrl && (
+        <div className="remote-recovery-panel">
+          <div>
+            <strong>Configured API origin</strong>
+            <p>GitHub Pages calls this origin for server-backed AI.</p>
+          </div>
+          <code>{apiBaseUrl}</code>
+        </div>
+      )}
     </section>
   );
 }
@@ -204,6 +276,21 @@ function aiLabel(mode) {
     offline: "Offline",
   };
   return labels[mode] || "Demo";
+}
+
+function hostedApiStatusLabel(status) {
+  const labels = {
+    checking: "Checking",
+    "not-configured": "Not configured",
+    misconfigured: "API setup",
+    404: "HTTP 404",
+    offline: "Offline",
+    openrouter: "OpenRouter",
+    openai: "OpenAI",
+    demo: "Demo",
+    online: "Online",
+  };
+  return labels[status] || "Online";
 }
 
 function tailscaleRecoveryCopy(tailscale) {

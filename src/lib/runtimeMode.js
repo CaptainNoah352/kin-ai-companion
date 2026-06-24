@@ -9,7 +9,7 @@ export function getKinApiBaseUrl() {
   const baseUrl = typeof injectedBaseUrl === "string" && injectedBaseUrl.trim()
     ? injectedBaseUrl
     : import.meta.env?.VITE_KIN_API_BASE_URL || "";
-  return String(baseUrl).trim().replace(/\/+$/, "");
+  return normalizeKinApiBaseUrl(baseUrl);
 }
 
 export function isGithubPagesRuntime() {
@@ -26,8 +26,23 @@ export function shouldUseKinApiBackend() {
   return shouldUseLocalApi() || Boolean(getKinApiBaseUrl());
 }
 
+export function isKinApiBaseUrlStaticHost() {
+  const baseUrl = getKinApiBaseUrl();
+  if (!baseUrl) return false;
+  try {
+    return new URL(baseUrl).hostname.endsWith(".github.io");
+  } catch {
+    return false;
+  }
+}
+
 export function buildKinApiUrl(path) {
   const normalizedPath = String(path || "").startsWith("/") ? String(path || "") : `/${path || ""}`;
   const baseUrl = getKinApiBaseUrl();
   return baseUrl ? `${baseUrl}${normalizedPath}` : normalizedPath;
+}
+
+function normalizeKinApiBaseUrl(value) {
+  const trimmed = String(value || "").trim().replace(/\/+$/, "");
+  return trimmed.replace(/\/api$/i, "");
 }

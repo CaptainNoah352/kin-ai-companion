@@ -5,6 +5,7 @@ import {
   getKinApiBaseUrl,
   getKinHostingMode,
   isGithubPagesRuntime,
+  isKinApiBaseUrlStaticHost,
   shouldUseKinApiBackend,
   shouldUseLocalApi,
 } from "../src/lib/runtimeMode.js";
@@ -84,12 +85,39 @@ test("hosted runtime uses configured Kin API backend", () => {
     globalThis.__KIN_API_BASE_URL__ = "https://api.example.com/";
 
     assert.equal(getKinApiBaseUrl(), "https://api.example.com");
+    assert.equal(isKinApiBaseUrlStaticHost(), false);
     assert.equal(shouldUseLocalApi(), false);
     assert.equal(shouldUseKinApiBackend(), true);
     assert.equal(buildKinApiUrl("/api/chat"), "https://api.example.com/api/chat");
     assert.equal(buildKinApiUrl("api/health"), "https://api.example.com/api/health");
   } finally {
     restoreValue("__KIN_HOSTING_MODE__", previousMode);
+    restoreValue("__KIN_API_BASE_URL__", previousApiBaseUrl);
+  }
+});
+
+test("configured Kin API backend strips accidental trailing api path", () => {
+  const previousApiBaseUrl = globalThis.__KIN_API_BASE_URL__;
+
+  try {
+    globalThis.__KIN_API_BASE_URL__ = "https://api.example.com/api/";
+
+    assert.equal(getKinApiBaseUrl(), "https://api.example.com");
+    assert.equal(buildKinApiUrl("/api/health"), "https://api.example.com/api/health");
+  } finally {
+    restoreValue("__KIN_API_BASE_URL__", previousApiBaseUrl);
+  }
+});
+
+test("github pages origin is detected as a bad Kin API backend", () => {
+  const previousApiBaseUrl = globalThis.__KIN_API_BASE_URL__;
+
+  try {
+    globalThis.__KIN_API_BASE_URL__ = "https://captainnoah352.github.io/kin-ai-companion";
+
+    assert.equal(getKinApiBaseUrl(), "https://captainnoah352.github.io/kin-ai-companion");
+    assert.equal(isKinApiBaseUrlStaticHost(), true);
+  } finally {
     restoreValue("__KIN_API_BASE_URL__", previousApiBaseUrl);
   }
 });

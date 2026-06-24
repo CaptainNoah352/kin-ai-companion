@@ -2179,7 +2179,9 @@ button:disabled {
   color: #7a5514;
 }
 
-.api-status--offline {
+.api-status--offline,
+.api-status--api-404,
+.api-status--api-misconfigured {
   border-color: #ffc9c4;
   background: #fff3f1;
   color: var(--coral-dark);

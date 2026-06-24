@@ -117,12 +117,38 @@ The hosted GitHub Pages app is static. It does not run `server.mjs` and must not
 For the shared friend build:
 
 1. In GitHub repository settings, add an Actions/Pages variable named `VITE_GOOGLE_CLIENT_ID` with the public Google OAuth web client id.
-2. During beta, add an Actions/Pages variable named `VITE_KIN_API_BASE_URL` with your hosted Kin API origin, such as `https://api.example.com`. Do not include a trailing `/api`.
+2. During beta, deploy the Kin API on Render, then add an Actions/Pages variable named `VITE_KIN_API_BASE_URL` with the Render service origin, such as `https://kin-api.onrender.com`. Do not include a trailing `/api`.
 3. In Google Cloud, keep the OAuth app external and add `https://<your-github-username>.github.io` to Authorized JavaScript origins.
 4. Enable Pages with GitHub Actions. The included workflow builds with `VITE_KIN_HOSTING=github-pages`.
 5. Share the Pages URL, usually `https://<your-github-username>.github.io/<repo-name>/`.
 
 Every friend signs into their own Google account. Their app data syncs to their own encrypted Drive app-data vault. During beta, real AI can run through your `VITE_KIN_API_BASE_URL` backend so model keys stay server-side. Later, remove that variable to let friends use their own encrypted OpenRouter key from Privacy -> Google Drive sync, or fall back to the built-in demo companion.
+
+### Render API for GitHub Pages
+
+GitHub Pages cannot run `server.mjs`. The repository includes `render.yaml` so Render can run the Kin API as a Node web service while GitHub Pages keeps serving the static app.
+
+In Render:
+
+1. Create a new Blueprint from this GitHub repository.
+2. Use the generated `kin-api` web service.
+3. When prompted for `OPENROUTER_API_KEY`, paste the OpenRouter key in Render only. Do not commit it.
+4. Confirm these service settings:
+   - Build command: `npm ci`
+   - Start command: `npm run server`
+   - Health check path: `/api/health`
+   - `KIN_SERVER_HOST=0.0.0.0`
+   - `KIN_ALLOWED_ORIGINS=https://captainnoah352.github.io`
+   - `OPENROUTER_SITE_URL=https://captainnoah352.github.io/kin-ai-companion/`
+5. After deploy, open `https://<your-render-service>.onrender.com/api/health`. It should return JSON with `ok: true`.
+
+In GitHub, set repository variable `VITE_KIN_API_BASE_URL` to the Render service origin, for example:
+
+```text
+https://kin-api.onrender.com
+```
+
+Then rerun the Pages workflow. The static app should stop calling `https://captainnoah352.github.io/kin-ai-companion/api/health` and call the Render origin instead.
 
 ### Sync Between Phone and PC
 
@@ -174,8 +200,8 @@ Kin keeps the OpenRouter key on the local API server, not in the browser. If Ope
 For a GitHub Pages beta, deploy `server.mjs` behind your own HTTPS origin and set:
 
 ```text
-VITE_KIN_API_BASE_URL=https://your-kin-api.example.com
-KIN_ALLOWED_ORIGINS=https://<your-github-username>.github.io
+VITE_KIN_API_BASE_URL=https://<your-render-service>.onrender.com
+KIN_ALLOWED_ORIGINS=https://captainnoah352.github.io
 ```
 
 The browser will call your API at `/api/health`, `/api/chat`, and `/api/adhd/tasks/breakdown`. Your `OPENROUTER_API_KEY` stays on that API server.

@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
-import { buildKinApiUrl, shouldUseKinApiBackend } from "./lib/runtimeMode.js";
+import { buildKinApiUrl, isGithubPagesRuntime, isKinApiBaseUrlStaticHost, shouldUseKinApiBackend } from "./lib/runtimeMode.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
 import { AdhdTasksCenter } from "./features/adhdTasks/AdhdTasksCenter.jsx";
@@ -327,17 +327,25 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isGithubPagesRuntime() && isKinApiBaseUrlStaticHost()) {
+      setApiMode("api-misconfigured");
+      return;
+    }
     if (!shouldUseKinApiBackend()) {
       setApiMode(userOpenRouter.apiKey ? "openrouter-user" : "demo");
       return;
     }
     fetch(buildKinApiUrl("/api/health"))
       .then((response) => {
-        if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}.`);
+        if (!response.ok) {
+          const error = new Error(`Health check returned HTTP ${response.status}.`);
+          error.status = response.status;
+          throw error;
+        }
         return response.json();
       })
       .then((data) => setApiMode(data.ai || "demo"))
-      .catch(() => setApiMode("offline"));
+      .catch((error) => setApiMode(error.status === 404 ? "api-404" : "offline"));
   }, [userOpenRouter.apiKey]);
 
   useEffect(() => {
@@ -2168,6 +2176,8 @@ function apiStatusLabel(mode) {
     openai: "OpenAI",
     demo: "Demo",
     offline: "Offline",
+    "api-404": "API 404",
+    "api-misconfigured": "API setup",
     checking: "Checking",
   };
   return labels[mode] || "Demo";
@@ -2180,6 +2190,8 @@ function apiStatusCopy(mode) {
     openai: "Real AI is connected through OpenAI.",
     demo: "Local constrained fallback is available.",
     offline: "API is offline; local fallback may be limited.",
+    "api-404": "Configured API URL returned 404. Check VITE_KIN_API_BASE_URL and deploy the Kin API server.",
+    "api-misconfigured": "VITE_KIN_API_BASE_URL points at the static app, not a deployed Kin API server.",
     checking: "Checking local API status.",
   };
   return copy[mode] || copy.demo;

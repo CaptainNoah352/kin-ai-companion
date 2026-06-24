@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: kin-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run server
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: KIN_SERVER_HOST
+        value: 0.0.0.0
+      - key: KIN_ALLOWED_ORIGINS
+        value: https://captainnoah352.github.io
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-5.2
+      - key: OPENROUTER_SITE_URL
+        value: https://captainnoah352.github.io/kin-ai-companion/
+      - key: OPENROUTER_APP_NAME
+        value: Kin Mental Wellness Companion
+      - key: OPENROUTER_API_KEY
+        sync: false

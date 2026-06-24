@@ -21,7 +21,7 @@ const app = express();
 const port = Number(process.env.PORT || 8787);
 const appPort = Number(process.env.KIN_APP_PORT || 988);
 const serveStatic = process.env.KIN_SERVE_STATIC === "1";
-const serverHost = process.env.KIN_SERVER_HOST || (serveStatic ? "0.0.0.0" : "127.0.0.1");
+const serverHost = process.env.KIN_SERVER_HOST || (process.env.NODE_ENV === "production" || serveStatic ? "0.0.0.0" : "127.0.0.1");
 const openRouterApiUrl = "https://openrouter.ai/api/v1/chat/completions";
 const pbkdf2Async = promisify(pbkdf2);
 
