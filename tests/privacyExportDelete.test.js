@@ -141,6 +141,8 @@ test("delete all data clears app lock", () => {
   writeStorage(storageKeys.adhdMessages, [{ role: "user", content: "adhd hello" }]);
   writeStorage(storageKeys.memory, { aboutMe: "private profile", summaries: [] });
   writeStorage(storageKeys.installHintDismissed, true);
+  writeStorage(storageKeys.activeTab, "Privacy");
+  writeStorage(storageKeys.pageScroll, { "wellness:Privacy": 480 });
   writeStorage(storageKeys.googleSession, { email: "friend@example.com" });
   writeStorage(storageKeys.driveSync, { fileId: "drive-file-id" });
   writeStorage(storageKeys.encryptedVault, { ciphertext: "encrypted content" });
@@ -153,6 +155,8 @@ test("delete all data clears app lock", () => {
   assert.equal(readStorage(storageKeys.adhdMessages, null), null);
   assert.equal(readStorage(storageKeys.memory, null), null);
   assert.equal(readStorage(storageKeys.installHintDismissed, null), null);
+  assert.equal(readStorage(storageKeys.activeTab, null), null);
+  assert.equal(readStorage(storageKeys.pageScroll, null), null);
   assert.equal(readStorage(storageKeys.googleSession, null), null);
   assert.equal(readStorage(storageKeys.driveSync, null), null);
   assert.equal(readStorage(storageKeys.encryptedVault, null), null);

@@ -19,6 +19,8 @@ export const storageKeys = {
   auditEvents: "auditEvents",
   installHintDismissed: "installHintDismissed",
   activeAppSpace: "activeAppSpace",
+  activeTab: "activeTab",
+  pageScroll: "pageScroll",
   appSpaceTabs: "appSpaceTabs",
   wellnessMessages: "wellnessMessages",
   adhdMessages: "adhdMessages",

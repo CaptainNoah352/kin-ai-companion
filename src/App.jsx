@@ -129,6 +129,13 @@ const appSpaceNavItems = {
   [appSpaceIds.adhd]: adhdNavItems,
 };
 
+const sharedTabIds = new Set(utilityNavItems.map((item) => item.id));
+const validTabIds = new Set([
+  ...wellnessNavItems.map((item) => item.id),
+  ...adhdNavItems.map((item) => item.id),
+  ...sharedTabIds,
+]);
+
 const defaultConsent = {
   userId: "local-user",
   acceptedTerms: true,
@@ -160,7 +167,7 @@ const defaultProfile = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("Home");
+  const [activeTab, setActiveTab] = useStoredState(storageKeys.activeTab, getInitialActiveTab());
   const [phoneDefaultApplied, setPhoneDefaultApplied] = useState(false);
   const [phoneMoreOpen, setPhoneMoreOpen] = useState(false);
   const [activeAppSpace, setActiveAppSpaceState] = useStoredState(storageKeys.activeAppSpace, appSpaceIds.wellness);
@@ -206,6 +213,7 @@ export default function App() {
   const lastVaultContentSignatureRef = useRef("");
   const skipNextAutoSyncRef = useRef(false);
   const syncAfterUnlockRef = useRef(false);
+  const hadStoredNavigationRef = useRef(hasStoredNavigationState());
   const [canUseNativeInstallPrompt, setCanUseNativeInstallPrompt] = useState(false);
   const [isPrivacyLocked, setIsPrivacyLocked] = useState(() =>
     createDefaultAppLock(readStorage(storageKeys.appLock, createDefaultAppLock())).enabled,
@@ -244,10 +252,69 @@ export default function App() {
 
   useEffect(() => {
     if (!isPhoneShell || phoneDefaultApplied) return;
+    if (hadStoredNavigationRef.current) {
+      setPhoneDefaultApplied(true);
+      return;
+    }
     setActiveAppSpaceState(appSpaceIds.adhd);
     setActiveTab("Chat");
     setPhoneDefaultApplied(true);
   }, [isPhoneShell, phoneDefaultApplied, setActiveAppSpaceState]);
+
+  useEffect(() => {
+    if (!validTabIds.has(activeTab)) {
+      setActiveTab("Home");
+      return;
+    }
+    if (sharedTabIds.has(activeTab) || navItems.some((item) => item.id === activeTab)) return;
+    setActiveTab(createDefaultAppSpaceTabs(appSpaceTabs)[normalizedAppSpace] || "Home");
+  }, [activeTab, appSpaceTabs, navItems, normalizedAppSpace, setActiveTab]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const scrollKey = getPageScrollKey(normalizedAppSpace, activeTab);
+    let saveFrame = 0;
+    let restoreFrame = 0;
+
+    function readScrollMap() {
+      return readStorage(storageKeys.pageScroll, {});
+    }
+
+    function saveScroll() {
+      window.cancelAnimationFrame(saveFrame);
+      const nextScrollTop = getWindowScrollTop();
+      writeStorage(storageKeys.pageScroll, {
+        ...readScrollMap(),
+        [scrollKey]: nextScrollTop,
+      });
+    }
+
+    function scheduleSaveScroll() {
+      window.cancelAnimationFrame(saveFrame);
+      saveFrame = window.requestAnimationFrame(saveScroll);
+    }
+
+    restoreFrame = window.requestAnimationFrame(() => {
+      const storedTop = Number(readScrollMap()[scrollKey]) || 0;
+      window.scrollTo({ top: storedTop, left: 0, behavior: "auto" });
+    });
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") saveScroll();
+    }
+
+    window.addEventListener("scroll", scheduleSaveScroll, { passive: true });
+    window.addEventListener("beforeunload", saveScroll);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.cancelAnimationFrame(saveFrame);
+      window.cancelAnimationFrame(restoreFrame);
+      saveScroll();
+      window.removeEventListener("scroll", scheduleSaveScroll);
+      window.removeEventListener("beforeunload", saveScroll);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeTab, normalizedAppSpace]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2190,6 +2257,33 @@ function useStoredState(key, fallback) {
     writeStorage(key, state);
   }, [key, state]);
   return [state, setState];
+}
+
+function getInitialActiveTab() {
+  const storedActiveTab = readStorage(storageKeys.activeTab, "");
+  if (validTabIds.has(storedActiveTab)) return storedActiveTab;
+
+  const activeSpace = normalizeAppSpace(readStorage(storageKeys.activeAppSpace, appSpaceIds.wellness));
+  const storedTabs = createDefaultAppSpaceTabs(readStorage(storageKeys.appSpaceTabs, createDefaultAppSpaceTabs()));
+  const storedSpaceTab = storedTabs[activeSpace];
+  return validTabIds.has(storedSpaceTab) ? storedSpaceTab : "Home";
+}
+
+function hasStoredNavigationState() {
+  return Boolean(
+    readStorage(storageKeys.activeTab, "") ||
+      readStorage(storageKeys.activeAppSpace, "") ||
+      readStorage(storageKeys.appSpaceTabs, null),
+  );
+}
+
+function getPageScrollKey(appSpace, tab) {
+  return `${normalizeAppSpace(appSpace)}:${validTabIds.has(tab) ? tab : "Home"}`;
+}
+
+function getWindowScrollTop() {
+  if (typeof window === "undefined") return 0;
+  return window.scrollY || document.documentElement?.scrollTop || document.body?.scrollTop || 0;
 }
 
 function useMediaQuery(query) {

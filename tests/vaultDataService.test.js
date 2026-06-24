@@ -16,6 +16,8 @@ test("vault payload excludes local-only sync and encrypted vault metadata", () =
       [storageKeys.wellnessMessages]: [{ role: "user", content: "wellness hello" }],
       [storageKeys.adhdMessages]: [{ role: "user", content: "adhd hello" }],
       [storageKeys.adhdTasks]: { tasks: { task1: { title: "private task" } } },
+      [storageKeys.activeTab]: "Tasks",
+      [storageKeys.pageScroll]: { "adhd:Tasks": 420 },
       [storageKeys.encryptedVault]: { ciphertext: "old encrypted blob" },
       [storageKeys.googleSession]: { email: "friend@example.com" },
       [storageKeys.driveSync]: { fileId: "drive-file-id" },
@@ -31,6 +33,8 @@ test("vault payload excludes local-only sync and encrypted vault metadata", () =
   assert.deepEqual(payload.kinData.wellnessMessages, [{ role: "user", content: "wellness hello" }]);
   assert.deepEqual(payload.kinData.adhdMessages, [{ role: "user", content: "adhd hello" }]);
   assert.deepEqual(payload.kinData.adhdTasks, { tasks: { task1: { title: "private task" } } });
+  assert.equal(payload.kinData.activeTab, "Tasks");
+  assert.equal(payload.kinData.pageScroll, undefined);
   assert.equal(payload.kinData.encryptedVault, undefined);
   assert.equal(payload.kinData.googleSession, undefined);
   assert.equal(payload.kinData.driveSync, undefined);
@@ -100,6 +104,8 @@ test("vault content signature excludes local-only metadata and changes with priv
   const first = createVaultContentSignature({
     kinData: {
       [storageKeys.messages]: [{ role: "user", content: "hello" }],
+      [storageKeys.activeTab]: "Journal",
+      [storageKeys.pageScroll]: { "wellness:Journal": 300 },
       [storageKeys.driveSync]: { status: "synced" },
       [storageKeys.googleSession]: { email: "friend@example.com" },
     },
@@ -111,6 +117,8 @@ test("vault content signature excludes local-only metadata and changes with priv
   const second = createVaultContentSignature({
     kinData: {
       [storageKeys.messages]: [{ role: "user", content: "changed" }],
+      [storageKeys.activeTab]: "Journal",
+      [storageKeys.pageScroll]: { "wellness:Journal": 900 },
       [storageKeys.driveSync]: { status: "error" },
       [storageKeys.googleSession]: { email: "friend@example.com" },
     },
@@ -123,4 +131,5 @@ test("vault content signature excludes local-only metadata and changes with priv
   assert.notEqual(first, second);
   assert.equal(first.includes("driveSync"), false);
   assert.equal(first.includes("googleSession"), false);
+  assert.equal(first.includes("pageScroll"), false);
 });

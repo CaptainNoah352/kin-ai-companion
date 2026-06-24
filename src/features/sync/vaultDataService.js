@@ -29,6 +29,7 @@ const localOnlyExportKeys = new Set([
   storageKeys.encryptedVault,
   storageKeys.googleSession,
   storageKeys.driveSync,
+  storageKeys.pageScroll,
 ]);
 
 export function createDefaultDriveSync(sync) {

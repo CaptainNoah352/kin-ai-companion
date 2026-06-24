@@ -37,6 +37,11 @@ test("install hint dismissal has a local storage key", () => {
   assert.equal(storageKeys.installHintDismissed, "installHintDismissed");
 });
 
+test("navigation restore has local storage keys", () => {
+  assert.equal(storageKeys.activeTab, "activeTab");
+  assert.equal(storageKeys.pageScroll, "pageScroll");
+});
+
 test("public setup files do not hardcode a personal Tailscale address", () => {
   const publicSetupText = [
     readFileSync(resolve(root, "README.md"), "utf8"),
