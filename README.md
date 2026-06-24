@@ -117,11 +117,12 @@ The hosted GitHub Pages app is static. It does not run `server.mjs` and must not
 For the shared friend build:
 
 1. In GitHub repository settings, add an Actions/Pages variable named `VITE_GOOGLE_CLIENT_ID` with the public Google OAuth web client id.
-2. In Google Cloud, keep the OAuth app external and add `https://<your-github-username>.github.io` to Authorized JavaScript origins.
-3. Enable Pages with GitHub Actions. The included workflow builds with `VITE_KIN_HOSTING=github-pages`.
-4. Share the Pages URL, usually `https://<your-github-username>.github.io/<repo-name>/`.
+2. During beta, add an Actions/Pages variable named `VITE_KIN_API_BASE_URL` with your hosted Kin API origin, such as `https://api.example.com`. Do not include a trailing `/api`.
+3. In Google Cloud, keep the OAuth app external and add `https://<your-github-username>.github.io` to Authorized JavaScript origins.
+4. Enable Pages with GitHub Actions. The included workflow builds with `VITE_KIN_HOSTING=github-pages`.
+5. Share the Pages URL, usually `https://<your-github-username>.github.io/<repo-name>/`.
 
-Every friend signs into their own Google account. Their app data syncs to their own encrypted Drive app-data vault. If they want real AI on GitHub Pages, they add their own OpenRouter key in Privacy -> Google Drive sync; otherwise Kin uses the built-in demo companion.
+Every friend signs into their own Google account. Their app data syncs to their own encrypted Drive app-data vault. During beta, real AI can run through your `VITE_KIN_API_BASE_URL` backend so model keys stay server-side. Later, remove that variable to let friends use their own encrypted OpenRouter key from Privacy -> Google Drive sync, or fall back to the built-in demo companion.
 
 ### Sync Between Phone and PC
 
@@ -169,6 +170,15 @@ OPENROUTER_APP_NAME=Kin Mental Wellness Companion
 Then restart `npm.cmd run server`.
 
 Kin keeps the OpenRouter key on the local API server, not in the browser. If OpenRouter is not configured, the server can still use the optional OpenAI fallback variables from `.env.example`, or it will remain in demo mode.
+
+For a GitHub Pages beta, deploy `server.mjs` behind your own HTTPS origin and set:
+
+```text
+VITE_KIN_API_BASE_URL=https://your-kin-api.example.com
+KIN_ALLOWED_ORIGINS=https://<your-github-username>.github.io
+```
+
+The browser will call your API at `/api/health`, `/api/chat`, and `/api/adhd/tasks/breakdown`. Your `OPENROUTER_API_KEY` stays on that API server.
 
 If an OpenRouter key was pasted into a chat, rotate it in the OpenRouter dashboard and update `.env` with the new key. Keep a spending limit enabled on the OpenRouter account and choose a model slug that fits the cost/quality tradeoff you want for personal use. The app status badge shows `OpenRouter`, `Demo`, or `Offline` so you can tell what mode is active.
 

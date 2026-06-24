@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createCoachReply } from "./aiCoachService.js";
 import { buildCoachChatPayload } from "./chatPayload.js";
 import { createOpenRouterBrowserReply } from "./openRouterClient.js";
-import { shouldUseLocalApi } from "../../lib/runtimeMode.js";
+import { buildKinApiUrl, shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
 import {
   buildConversationSummary,
   getMemoryStats,
@@ -139,10 +139,10 @@ export function AiCoachChat({
     });
 
     try {
-      const data = userOpenRouter?.apiKey
-        ? await createOpenRouterBrowserReply({ payload, userOpenRouter })
-        : shouldUseLocalApi()
+      const data = shouldUseKinApiBackend()
           ? await fetchServerCoachReply(payload)
+          : userOpenRouter?.apiKey
+            ? await createOpenRouterBrowserReply({ payload, userOpenRouter })
           : createCoachReply({
               text: trimmed,
               mood,
@@ -361,7 +361,7 @@ export function AiCoachChat({
 }
 
 async function fetchServerCoachReply(payload) {
-  const response = await fetch("/api/chat", {
+  const response = await fetch(buildKinApiUrl("/api/chat"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

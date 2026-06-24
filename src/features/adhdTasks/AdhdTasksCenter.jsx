@@ -18,7 +18,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { shouldUseLocalApi } from "../../lib/runtimeMode.js";
+import { buildKinApiUrl, shouldUseKinApiBackend } from "../../lib/runtimeMode.js";
 import { createGoal } from "../goals/goalService.js";
 import {
   addSubtask,
@@ -70,7 +70,9 @@ export function AdhdTasksCenter({
     [state, filterCategory, hideCompleted],
   );
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) || state.tabs[0];
-  const realAiAvailable = Boolean(userOpenRouter?.apiKey) || (shouldUseLocalApi() && (apiMode === "openrouter" || apiMode === "openai"));
+  const realAiAvailable =
+    (shouldUseKinApiBackend() && (apiMode === "openrouter" || apiMode === "openai")) ||
+    (!shouldUseKinApiBackend() && Boolean(userOpenRouter?.apiKey));
 
   function applyChange(updater) {
     setTaskState((current) => {
@@ -97,9 +99,9 @@ export function AdhdTasksCenter({
     setIsBreakingDown(true);
     setNotice("");
     try {
-      const task = userOpenRouter?.apiKey
-        ? await createBrowserTaskBreakdown({ task: title, spiciness, userOpenRouter })
-        : await fetchServerTaskBreakdown({ task: title, spiciness });
+      const task = shouldUseKinApiBackend()
+        ? await fetchServerTaskBreakdown({ task: title, spiciness })
+        : await createBrowserTaskBreakdown({ task: title, spiciness, userOpenRouter });
       applyChange((current) => addTask(current, task));
       setDraft(emptyDraft);
     } catch (error) {
@@ -459,10 +461,10 @@ function StatPill({ label, value }) {
 }
 
 async function fetchServerTaskBreakdown({ task, spiciness }) {
-  if (!shouldUseLocalApi()) {
-    throw new Error("Add a user-owned OpenRouter key in Privacy / Sync to use Magic breakdown on GitHub Pages.");
+  if (!shouldUseKinApiBackend()) {
+    throw new Error("Add a user-owned OpenRouter key in Privacy / Sync to use Magic breakdown without a Kin API backend.");
   }
-  const response = await fetch("/api/adhd/tasks/breakdown", {
+  const response = await fetch(buildKinApiUrl("/api/adhd/tasks/breakdown"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ task, spiciness }),

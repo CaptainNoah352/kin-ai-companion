@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
-import { shouldUseLocalApi } from "./lib/runtimeMode.js";
+import { buildKinApiUrl, shouldUseKinApiBackend } from "./lib/runtimeMode.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
 import { AdhdTasksCenter } from "./features/adhdTasks/AdhdTasksCenter.jsx";
@@ -327,16 +327,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (userOpenRouter.apiKey) {
-      setApiMode("openrouter-user");
+    if (!shouldUseKinApiBackend()) {
+      setApiMode(userOpenRouter.apiKey ? "openrouter-user" : "demo");
       return;
     }
-    if (!shouldUseLocalApi()) {
-      setApiMode("demo");
-      return;
-    }
-    fetch("/api/health")
-      .then((response) => response.json())
+    fetch(buildKinApiUrl("/api/health"))
+      .then((response) => {
+        if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}.`);
+        return response.json();
+      })
       .then((data) => setApiMode(data.ai || "demo"))
       .catch(() => setApiMode("offline"));
   }, [userOpenRouter.apiKey]);
