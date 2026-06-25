@@ -6,15 +6,15 @@ export const appSpaceIds = {
 export const appSpaceMeta = {
   [appSpaceIds.wellness]: {
     id: appSpaceIds.wellness,
-    label: "Wellness",
-    chatTitle: "Wellness Chat",
-    shortLabel: "Wellness",
+    label: "Support",
+    chatTitle: "Coach",
+    shortLabel: "Support",
   },
   [appSpaceIds.adhd]: {
     id: appSpaceIds.adhd,
-    label: "ADHD / Focus",
-    chatTitle: "ADHD Coach",
-    shortLabel: "ADHD",
+    label: "Focus",
+    chatTitle: "Focus Coach",
+    shortLabel: "Focus",
   },
 };
 

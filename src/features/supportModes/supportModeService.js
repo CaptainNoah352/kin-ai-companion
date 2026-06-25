@@ -10,7 +10,7 @@ export const supportModeIds = {
 
 export const requiredSupportModes = [
   { id: supportModeIds.emotionalSupport, label: "Emotional Support" },
-  { id: supportModeIds.adhdFocus, label: "ADHD / Focus Coach" },
+  { id: supportModeIds.adhdFocus, label: "Focus Coach" },
   { id: supportModeIds.goalTracking, label: "Goal Tracker" },
   { id: supportModeIds.taskStart, label: "Start Button" },
   { id: supportModeIds.procrastination, label: "Procrastination Unblocker" },

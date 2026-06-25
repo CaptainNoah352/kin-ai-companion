@@ -46,7 +46,7 @@ export const dataCategories = [
   {
     key: "adhdMessages",
     label: "Legacy focus coach messages",
-    purpose: "Preserves older ADHD / Focus conversation history for encrypted sync and upgrade compatibility.",
+    purpose: "Preserves older focus-coach conversation history for encrypted sync and upgrade compatibility.",
     required: false,
     userCanDelete: true,
     usedForAiPersonalization: true,
@@ -55,8 +55,8 @@ export const dataCategories = [
   },
   {
     key: "adhdTasks",
-    label: "ADHD task lists",
-    purpose: "Stores nested ADHD task lists, tiny steps, estimates, priority, categories, completion state, and local exports.",
+    label: "Focus task lists",
+    purpose: "Stores nested focus task lists, tiny steps, estimates, priority, categories, completion state, and local exports.",
     required: false,
     retentionDays: 365,
     userCanDelete: true,
