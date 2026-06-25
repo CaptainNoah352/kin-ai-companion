@@ -1,5 +1,5 @@
-import { BookOpen, Feather, Save, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { BookOpen, Feather, MoreHorizontal, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const emptyDraft = {
   title: "",
@@ -24,11 +24,24 @@ export function createJournalEntry(draft) {
 
 export function JournalCenter({ entries, setEntries }) {
   const [draft, setDraft] = useState(emptyDraft);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
   const safeEntries = Array.isArray(entries) ? entries : [];
   const sortedEntries = useMemo(
     () => [...safeEntries].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
     [safeEntries],
   );
+
+  useEffect(() => {
+    if (!openMenuId) return undefined;
+    function handlePointerDown(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [openMenuId]);
 
   function updateDraft(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -111,13 +124,40 @@ export function JournalCenter({ entries, setEntries }) {
                     {new Date(entry.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                   </span>
                   {entry.mood ? <span className="diary-entry__mood">{entry.mood}</span> : null}
+                  <div
+                    className={`diary-entry__menu-wrap${entry.mood ? "" : " diary-entry__menu-wrap--alone"}`}
+                    ref={openMenuId === entry.id ? menuRef : null}
+                  >
+                    <button
+                      className="diary-entry__menu-button"
+                      type="button"
+                      aria-label="Entry options"
+                      aria-haspopup="menu"
+                      aria-expanded={openMenuId === entry.id}
+                      onClick={() => setOpenMenuId((current) => (current === entry.id ? null : entry.id))}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                    {openMenuId === entry.id ? (
+                      <div className="diary-entry__menu" role="menu">
+                        <button
+                          className="diary-entry__menu-item diary-entry__menu-item--danger"
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            deleteEntry(entry.id);
+                            setOpenMenuId(null);
+                          }}
+                        >
+                          <Trash2 size={15} />
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </header>
                 <strong className="diary-entry__title">{entry.title}</strong>
                 <p className="diary-entry__body">{entry.text}</p>
-                <button className="icon-text-button" type="button" onClick={() => deleteEntry(entry.id)}>
-                  <Trash2 size={15} />
-                  Delete
-                </button>
               </article>
             ))
           ) : (

@@ -24,28 +24,27 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CoachLogo } from "./components/CoachLogo.jsx";
 import { MetricRing } from "./components/MetricRing.jsx";
 import { appendAuditEvent } from "./lib/auditLog.js";
 import { fetchKinApiHealth, waitForKinApi } from "./lib/kinApiClient.js";
 import { isGithubPagesRuntime, isKinApiBaseUrlStaticHost, shouldUseKinApiBackend } from "./lib/runtimeMode.js";
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "./lib/storage.js";
 import { AiCoachChat } from "./features/aiCoach/AiCoachChat.jsx";
-import { AdhdTasksCenter } from "./features/adhdTasks/AdhdTasksCenter.jsx";
+import { mergeCoachHistories, seedUnifiedCoachMessages } from "./features/aiCoach/coachHistoryMigration.js";
 import { createDefaultAdhdTasks } from "./features/adhdTasks/adhdTaskService.js";
 import {
   appSpaceIds,
-  appSpaceMeta,
   buildAppBridgeContext,
   createDefaultAppSpaceTabs,
   normalizeAppSpace,
 } from "./features/appSpaces/appSpaceService.js";
 import { DailyCheckIn } from "./features/checkins/DailyCheckIn.jsx";
 import { getCheckInRecommendation, getLatestCheckIn } from "./features/checkins/checkInService.js";
-import { GoalsCenter } from "./features/goals/GoalsCenter.jsx";
-import { InterventionRunner } from "./features/interventions/InterventionRunner.jsx";
 import { JournalCenter } from "./features/journal/JournalCenter.jsx";
 import { MemoryCenter } from "./features/memory/MemoryCenter.jsx";
 import { addMemorySummary, createDefaultMemory, setAutoChatSummary } from "./features/memory/memoryService.js";
+import { deriveUnifiedNavigationState, isValidUnifiedTabId, normalizeToolView } from "./features/navigation/unifiedNavigation.js";
 import { OnboardingFlow } from "./features/onboarding/OnboardingFlow.jsx";
 import {
   buildCarePlanForGoals,
@@ -71,10 +70,10 @@ import { SupportResources } from "./features/safety/SupportResources.jsx";
 import { ProductionReadinessChecklist } from "./features/setup/ProductionReadinessChecklist.jsx";
 import { SetupChecklist } from "./features/setup/SetupChecklist.jsx";
 import { GoogleLoginGate } from "./features/sync/GoogleLoginGate.jsx";
-import { StartCenter } from "./features/start/StartCenter.jsx";
 import { deleteDriveVault, downloadDriveVault, findDriveVault, uploadDriveVault } from "./features/sync/driveVaultService.js";
 import { requestDriveAccessToken } from "./features/sync/googleAuthService.js";
 import { SyncCenter } from "./features/sync/SyncCenter.jsx";
+import { ToolsCenter } from "./features/tools/ToolsCenter.jsx";
 import {
   createDefaultTrustedVaultUnlock,
   forgetTrustedVaultUnlock,
@@ -104,20 +103,19 @@ const googleDriveTokenSessionKey = "kin.v2.googleDrive.accessToken";
 const localVaultSnapshotDebounceMs = 500;
 const autoSyncDebounceMs = 5000;
 
-const wellnessNavItems = [
+const primaryNavItems = [
   { id: "Home", label: "Home", icon: Home },
-  { id: "Chat", label: "Chat", icon: MessageCircle },
+  { id: "Coach", label: "Coach", icon: Brain },
   { id: "Journal", label: "Journal", icon: PenLine },
   { id: "Tools", label: "Tools", icon: Wrench },
+  { id: "Review", label: "Review", icon: BarChart3 },
   { id: "Progress", label: "Progress", icon: BarChart3 },
 ];
 
-const adhdNavItems = [
+const phoneNavItems = [
   { id: "Home", label: "Home", icon: Home },
-  { id: "Chat", label: "Coach", icon: Brain },
-  { id: "Tasks", label: "Tasks", icon: FileCheck2 },
-  { id: "Goals", label: "Goals", icon: CheckCircle2 },
-  { id: "Start", label: "Start", icon: Plus },
+  { id: "Coach", label: "Coach", icon: Brain },
+  { id: "Tools", label: "Tools", icon: Wrench },
   { id: "Review", label: "Review", icon: BarChart3 },
 ];
 
@@ -130,21 +128,11 @@ const utilityNavItems = [
 ];
 
 const phoneUtilityNavItems = [
+  { id: "Journal", label: "Journal", icon: PenLine },
+  { id: "Progress", label: "Progress", icon: BarChart3 },
   ...utilityNavItems,
   { id: "Privacy", label: "Remote", icon: Router, navKey: "Remote" },
 ];
-
-const appSpaceNavItems = {
-  [appSpaceIds.wellness]: wellnessNavItems,
-  [appSpaceIds.adhd]: adhdNavItems,
-};
-
-const sharedTabIds = new Set(utilityNavItems.map((item) => item.id));
-const validTabIds = new Set([
-  ...wellnessNavItems.map((item) => item.id),
-  ...adhdNavItems.map((item) => item.id),
-  ...sharedTabIds,
-]);
 
 const defaultConsent = {
   userId: "local-user",
@@ -182,12 +170,13 @@ const defaultProfile = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useStoredState(storageKeys.activeTab, getInitialActiveTab());
+  const [activeToolView, setActiveToolView] = useStoredState(storageKeys.activeToolView, getInitialToolView());
   const [theme, setTheme] = useStoredState("theme", "system");
   const systemTheme = useSystemTheme();
   const resolvedTheme = theme === "light" || theme === "dark" ? theme : systemTheme;
   const [phoneDefaultApplied, setPhoneDefaultApplied] = useState(false);
   const [phoneMoreOpen, setPhoneMoreOpen] = useState(false);
-  const [activeAppSpace, setActiveAppSpaceState] = useStoredState(storageKeys.activeAppSpace, appSpaceIds.wellness);
+  const [, setActiveAppSpaceState] = useStoredState(storageKeys.activeAppSpace, appSpaceIds.wellness);
   const [appSpaceTabs, setAppSpaceTabs] = useStoredState(storageKeys.appSpaceTabs, createDefaultAppSpaceTabs());
   const [chatMode, setChatMode] = useState("Support");
   const [startSuggestedTask, setStartSuggestedTask] = useState("");
@@ -196,9 +185,19 @@ export default function App() {
   const [apiStatusNotice, setApiStatusNotice] = useState("");
   const [consent, setConsent] = useStoredState(storageKeys.consent, defaultConsent);
   const [profile, setProfile] = useStoredState(storageKeys.profile, defaultProfile);
-  const legacyMessages = readStorage(storageKeys.messages, []);
-  const [wellnessMessages, setWellnessMessages] = useStoredState(storageKeys.wellnessMessages, legacyMessages);
-  const [adhdMessages, setAdhdMessages] = useStoredState(storageKeys.adhdMessages, []);
+  const storedMessages = readStorage(storageKeys.messages, []);
+  const storedWellnessMessages = readStorage(storageKeys.wellnessMessages, storedMessages);
+  const storedAdhdMessages = readStorage(storageKeys.adhdMessages, []);
+  const [messages, setMessages] = useStoredState(
+    storageKeys.messages,
+    seedUnifiedCoachMessages({
+      messages: storedMessages,
+      wellnessMessages: storedWellnessMessages,
+      adhdMessages: storedAdhdMessages,
+    }),
+  );
+  const [wellnessMessages, setWellnessMessages] = useStoredState(storageKeys.wellnessMessages, storedWellnessMessages);
+  const [adhdMessages, setAdhdMessages] = useStoredState(storageKeys.adhdMessages, storedAdhdMessages);
   const [adhdTasks, setAdhdTasks] = useStoredState(storageKeys.adhdTasks, createDefaultAdhdTasks());
   const [goals, setGoals] = useStoredState(storageKeys.goals, []);
   const [startSessions, setStartSessions] = useStoredState(storageKeys.startSessions, []);
@@ -244,21 +243,17 @@ export default function App() {
   const region = profile?.region || "US";
   const normalizedAppLock = useMemo(() => createDefaultAppLock(appLock), [appLock]);
   const isPhoneShell = useMediaQuery("(max-width: 700px)");
-  const normalizedAppSpace = normalizeAppSpace(activeAppSpace);
-  const appSpaceClass = `app-space--${normalizedAppSpace}`;
-  const activeAppMeta = appSpaceMeta[normalizedAppSpace];
-  const navItems = appSpaceNavItems[normalizedAppSpace];
-  const messages = normalizedAppSpace === appSpaceIds.adhd ? adhdMessages : wellnessMessages;
-  const setMessages = normalizedAppSpace === appSpaceIds.adhd ? setAdhdMessages : setWellnessMessages;
+  const normalizedAppSpace = appSpaceIds.wellness;
+  const appSpaceClass = "app-space--coach";
   const combinedMessages = useMemo(
-    () => [...(Array.isArray(wellnessMessages) ? wellnessMessages : []), ...(Array.isArray(adhdMessages) ? adhdMessages : [])],
-    [wellnessMessages, adhdMessages],
+    () => mergeCoachHistories(messages, wellnessMessages, adhdMessages),
+    [messages, wellnessMessages, adhdMessages],
   );
   const bridgeContext = useMemo(
     () =>
       buildAppBridgeContext({
         activeAppSpace: normalizedAppSpace,
-        wellnessMessages,
+        wellnessMessages: messages,
         adhdMessages,
         adhdTasks,
         goals,
@@ -267,7 +262,7 @@ export default function App() {
         checkIns,
         memory,
       }),
-    [normalizedAppSpace, wellnessMessages, adhdMessages, adhdTasks, goals, startSessions, weeklyReviews, checkIns, memory],
+    [normalizedAppSpace, messages, adhdMessages, adhdTasks, goals, startSessions, weeklyReviews, checkIns, memory],
   );
 
   useEffect(() => {
@@ -282,19 +277,19 @@ export default function App() {
       setPhoneDefaultApplied(true);
       return;
     }
-    setActiveAppSpaceState(appSpaceIds.adhd);
-    setActiveTab("Chat");
+    setActiveTab("Coach");
     setPhoneDefaultApplied(true);
-  }, [isPhoneShell, phoneDefaultApplied, setActiveAppSpaceState]);
+  }, [isPhoneShell, phoneDefaultApplied, setActiveTab]);
 
   useEffect(() => {
-    if (!validTabIds.has(activeTab)) {
-      setActiveTab("Home");
-      return;
+    const nextNavigation = deriveUnifiedNavigationState({ activeTab, activeToolView });
+    if (nextNavigation.activeTab !== activeTab) {
+      setActiveTab(nextNavigation.activeTab);
     }
-    if (sharedTabIds.has(activeTab) || navItems.some((item) => item.id === activeTab)) return;
-    setActiveTab(createDefaultAppSpaceTabs(appSpaceTabs)[normalizedAppSpace] || "Home");
-  }, [activeTab, appSpaceTabs, navItems, normalizedAppSpace, setActiveTab]);
+    if (nextNavigation.activeToolView !== activeToolView) {
+      setActiveToolView(nextNavigation.activeToolView);
+    }
+  }, [activeTab, activeToolView, setActiveTab, setActiveToolView]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -499,8 +494,8 @@ export default function App() {
   }, [
     consent,
     profile,
-    activeAppSpace,
-    appSpaceTabs,
+    activeToolView,
+    messages,
     wellnessMessages,
     adhdMessages,
     adhdTasks,
@@ -554,8 +549,8 @@ export default function App() {
   }, [
     consent,
     profile,
-    activeAppSpace,
-    appSpaceTabs,
+    activeToolView,
+    messages,
     wellnessMessages,
     adhdMessages,
     adhdTasks,
@@ -676,62 +671,44 @@ export default function App() {
 
   function openModule(moduleId) {
     setSelectedModuleId(moduleId);
-    openTabInAppSpace(appSpaceIds.wellness, "Tools");
+    setActiveToolView("exercises");
+    setActiveTab("Tools");
+    setPhoneMoreOpen(false);
   }
 
   function selectTab(tabId) {
-    setActiveTab(tabId);
-    setAppSpaceTabs((current) => ({
-      ...createDefaultAppSpaceTabs(current),
-      [normalizedAppSpace]: tabId,
-    }));
-    setPhoneMoreOpen(false);
-  }
-
-  function openTabInAppSpace(spaceId, tabId) {
-    const nextSpace = normalizeAppSpace(spaceId);
-    setAppSpaceTabs((current) => ({
-      ...createDefaultAppSpaceTabs(current),
-      [normalizedAppSpace]: activeTab,
-      [nextSpace]: tabId,
-    }));
-    setActiveAppSpaceState(nextSpace);
-    setActiveTab(tabId);
-    setPhoneMoreOpen(false);
-  }
-
-  function switchAppSpace(spaceId) {
-    const nextSpace = normalizeAppSpace(spaceId);
-    setAppSpaceTabs((current) => ({
-      ...createDefaultAppSpaceTabs(current),
-      [normalizedAppSpace]: activeTab,
-    }));
-    setActiveAppSpaceState(nextSpace);
-    setActiveTab(createDefaultAppSpaceTabs(appSpaceTabs)[nextSpace] || "Home");
+    const nextNavigation = deriveUnifiedNavigationState({ activeTab: tabId, activeToolView });
+    setActiveTab(nextNavigation.activeTab);
+    setActiveToolView(nextNavigation.activeToolView);
     setPhoneMoreOpen(false);
   }
 
   function openChatMode(mode = "Support") {
-    const nextSpace = ["Focus", "Goals", "Unblock"].includes(mode) ? appSpaceIds.adhd : appSpaceIds.wellness;
     setChatMode(mode);
-    openTabInAppSpace(nextSpace, "Chat");
+    selectTab("Coach");
   }
 
   function openStart(task = "") {
     setStartSuggestedTask(typeof task === "string" ? task : "");
-    openTabInAppSpace(appSpaceIds.adhd, "Start");
+    setActiveToolView("start");
+    setActiveTab("Tools");
+    setPhoneMoreOpen(false);
   }
 
   function openGoals() {
-    openTabInAppSpace(appSpaceIds.adhd, "Goals");
+    setActiveToolView("goals");
+    setActiveTab("Tools");
+    setPhoneMoreOpen(false);
   }
 
   function openTasks() {
-    openTabInAppSpace(appSpaceIds.adhd, "Tasks");
+    setActiveToolView("tasks");
+    setActiveTab("Tools");
+    setPhoneMoreOpen(false);
   }
 
   function openReview() {
-    openTabInAppSpace(appSpaceIds.adhd, "Review");
+    selectTab("Review");
   }
 
   function handleCheckInComplete(checkIn) {
@@ -742,7 +719,7 @@ export default function App() {
   function handleModuleComplete(module) {
     setCompletedModules((current) => [module, ...current]);
     setAuditEvents((events) => appendAuditEvent(events, "module_completed", { moduleId: module.moduleId }));
-    openTabInAppSpace(appSpaceIds.wellness, "Progress");
+    selectTab("Progress");
   }
 
   function saveMemorySummary(text) {
@@ -812,6 +789,8 @@ export default function App() {
       profile,
       activeAppSpace: normalizedAppSpace,
       appSpaceTabs: createDefaultAppSpaceTabs(appSpaceTabs),
+      activeToolView: normalizeToolView(activeToolView),
+      messages,
       wellnessMessages,
       adhdMessages,
       adhdTasks,
@@ -900,6 +879,17 @@ export default function App() {
     setProfile(restoredKinData.profile ?? defaultProfile);
     setActiveAppSpaceState(normalizeAppSpace(restoredKinData.activeAppSpace));
     setAppSpaceTabs(createDefaultAppSpaceTabs(restoredKinData.appSpaceTabs));
+    const restoredNavigation = deriveUnifiedNavigationState({
+      activeTab: restoredKinData.activeTab,
+      activeToolView: restoredKinData.activeToolView,
+    });
+    setActiveTab(restoredNavigation.activeTab);
+    setActiveToolView(restoredNavigation.activeToolView);
+    setMessages(seedUnifiedCoachMessages({
+      messages: restoredKinData.messages,
+      wellnessMessages: restoredKinData.wellnessMessages,
+      adhdMessages: restoredKinData.adhdMessages,
+    }));
     setWellnessMessages(restoredKinData.wellnessMessages ?? restoredKinData.messages ?? []);
     setAdhdMessages(restoredKinData.adhdMessages ?? []);
     setAdhdTasks(createDefaultAdhdTasks(restoredKinData.adhdTasks));
@@ -1455,10 +1445,12 @@ export default function App() {
 
   function deleteMentalHealthAndState() {
     deleteMentalHealthContent();
+    setMessages([]);
     setWellnessMessages([]);
     setAdhdMessages([]);
     setAdhdTasks(createDefaultAdhdTasks());
     setAppSpaceTabs(createDefaultAppSpaceTabs());
+    setActiveToolView("exercises");
     setGoals([]);
     setStartSessions([]);
     setWeeklyReviews([]);
@@ -1489,6 +1481,8 @@ export default function App() {
     setProfile(null);
     setActiveAppSpaceState(appSpaceIds.wellness);
     setActiveTab("Home");
+    setActiveToolView("exercises");
+    setMessages([]);
     setWellnessMessages([]);
     setAdhdMessages([]);
     setAdhdTasks(createDefaultAdhdTasks());
@@ -1769,7 +1763,6 @@ export default function App() {
       <HomeView
         latestCheckIn={latestCheckIn}
         goals={goals}
-        activeAppSpace={normalizedAppSpace}
         onStartCheckIn={() => selectTab("Check In")}
         onOpenChatMode={openChatMode}
         onOpenTasks={openTasks}
@@ -1780,7 +1773,7 @@ export default function App() {
       />
     ),
     "Check In": <DailyCheckIn latestCheckIn={latestCheckIn} onComplete={handleCheckInComplete} />,
-    Chat: (
+    Coach: (
       <AiCoachChat
         messages={messages}
         setMessages={setMessages}
@@ -1797,27 +1790,8 @@ export default function App() {
         chatMode={chatMode}
         onChatModeChange={setChatMode}
         activeAppSpace={normalizedAppSpace}
-        appTitle={activeAppMeta.chatTitle}
+        appTitle="Coach"
         bridgeContext={bridgeContext}
-      />
-    ),
-    Goals: <GoalsCenter goals={goals} setGoals={setGoals} onOpenChatMode={openChatMode} onOpenStart={openStart} />,
-    Tasks: (
-      <AdhdTasksCenter
-        taskState={adhdTasks}
-        setTaskState={setAdhdTasks}
-        setGoals={setGoals}
-        onOpenStart={openStart}
-        userOpenRouter={userOpenRouter}
-        apiMode={apiMode}
-      />
-    ),
-    Start: (
-      <StartCenter
-        sessions={startSessions}
-        setSessions={setStartSessions}
-        suggestedTask={startSuggestedTask}
-        onOpenChatMode={openChatMode}
       />
     ),
     Review: (
@@ -1836,12 +1810,25 @@ export default function App() {
     Memory: <MemoryCenter memory={memory} setMemory={setMemory} messages={combinedMessages} />,
     Profile: <ProfileSettings profile={profile} onUpdateProfile={updateProfileSettings} />,
     Tools: (
-      <InterventionRunner
+      <ToolsCenter
+        activeToolView={activeToolView}
+        onSelectToolView={setActiveToolView}
         selectedModuleId={selectedModuleId}
         onSelectModule={setSelectedModuleId}
-        drafts={moduleDrafts}
-        setDrafts={setModuleDrafts}
-        onComplete={handleModuleComplete}
+        moduleDrafts={moduleDrafts}
+        setModuleDrafts={setModuleDrafts}
+        onCompleteModule={handleModuleComplete}
+        taskState={adhdTasks}
+        setTaskState={setAdhdTasks}
+        setGoals={setGoals}
+        goals={goals}
+        onOpenChatMode={openChatMode}
+        onOpenStart={openStart}
+        userOpenRouter={userOpenRouter}
+        apiMode={apiMode}
+        startSessions={startSessions}
+        setStartSessions={setStartSessions}
+        startSuggestedTask={startSuggestedTask}
       />
     ),
     Progress: (
@@ -1927,14 +1914,13 @@ export default function App() {
       <main className={`phone-shell phone-shell--${slugify(activeTab)} ${appSpaceClass}`}>
         <header className="phone-header">
           <div className="phone-brand">
-            <Leaf size={23} />
+            <CoachLogo className="brand-logo" size={30} />
             <span>
-              <strong>Kin {activeAppMeta.shortLabel}</strong>
+              <strong>Kin</strong>
               <small>{activeTab === "Safety" ? "Support" : activeTab}</small>
             </span>
           </div>
           <div className="phone-header-actions">
-            <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} compact />
             <ApiStatusBadge mode={apiMode} onReconnect={() => refreshApiStatus({ wake: true })} />
             <ThemeToggle setting={theme} onCycle={() => setTheme(cycleThemeSetting)} className="phone-wellness-button theme-toggle" />
             <button
@@ -1987,7 +1973,7 @@ export default function App() {
         )}
 
         <nav className="phone-bottom-nav" aria-label="Phone navigation">
-          {navItems.map((item) => {
+          {phoneNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -2011,18 +1997,16 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
-            <Leaf size={28} />
+            <CoachLogo className="brand-logo" size={34} />
           </div>
           <div>
             <h1>Kin</h1>
-            <p>{activeAppMeta.label}</p>
+            <p>AI Coach</p>
           </div>
         </div>
 
-        <AppSpaceSwitcher activeAppSpace={normalizedAppSpace} onSwitch={switchAppSpace} />
-
-        <nav className="nav-list" aria-label={`${activeAppMeta.label} navigation`}>
-          {navItems.map((item) => {
+        <nav className="nav-list" aria-label="Kin navigation">
+          {primaryNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -2071,7 +2055,7 @@ export default function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <h1>{activeTab === "Chat" ? activeAppMeta.chatTitle : activeTab === "Safety" ? "Support" : activeTab}</h1>
+            <h1>{activeTab === "Coach" ? "Coach" : activeTab === "Safety" ? "Support" : activeTab}</h1>
             <p>{formatToday()} - This app does not diagnose or replace professional care.</p>
           </div>
           <div className="topbar-actions">
@@ -2124,38 +2108,9 @@ function ThemeToggle({ setting, onCycle, className }) {
   );
 }
 
-function AppSpaceSwitcher({ activeAppSpace, onSwitch, compact = false }) {
-  const spaces = [
-    { id: appSpaceIds.wellness, label: compact ? "Well" : "Wellness", icon: Leaf },
-    { id: appSpaceIds.adhd, label: compact ? "ADHD" : "ADHD / Focus", icon: Brain },
-  ];
-
-  return (
-    <div className={compact ? "app-space-switcher app-space-switcher--compact" : "app-space-switcher"} role="tablist" aria-label="Kin app space">
-      {spaces.map((space) => {
-        const Icon = space.icon;
-        return (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeAppSpace === space.id}
-            className={activeAppSpace === space.id ? "app-space-tab active" : "app-space-tab"}
-            key={space.id}
-            onClick={() => onSwitch(space.id)}
-          >
-            <Icon size={15} />
-            <span>{space.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function HomeView({
   latestCheckIn,
   goals,
-  activeAppSpace = appSpaceIds.wellness,
   onStartCheckIn,
   onOpenChatMode,
   onOpenTasks,
@@ -2167,64 +2122,63 @@ function HomeView({
   const activeGoalCount = (Array.isArray(goals) ? goals : []).filter(
     (goal) => goal?.status !== "done" && goal?.status !== "archived",
   ).length;
-  const isAdhd = activeAppSpace === appSpaceIds.adhd;
 
   return (
     <section className="home-grid home-grid--unified">
       <article className="hero-card hero-card--compact">
         <div>
-          <h2>{isAdhd ? "What needs a start?" : "How are you feeling?"}</h2>
-          <p>
-            {isAdhd
-              ? "Use ADHD / Focus for tiny starts, no-shame recovery, body doubling, goals, and planning."
-              : "Use Wellness for emotions, grounding, journaling, and coping tools."}
-          </p>
+          <h2>What needs support?</h2>
+          <p>Use Coach for feelings, focus, task starts, goals, grounding, and no-shame recovery.</p>
           <div className="button-row">
-            <button className="primary-button primary-button--auto" type="button" onClick={() => onOpenChatMode(isAdhd ? "Focus" : "Support")}>
-              {isAdhd ? <Brain size={16} /> : <MessageCircle size={16} />}
-              {isAdhd ? "Open Coach" : "Open Chat"}
+            <button className="primary-button primary-button--auto" type="button" onClick={() => onOpenChatMode("Support")}>
+              <Brain size={16} />
+              Open Coach
             </button>
-            <button className="secondary-button secondary-button--auto" type="button" onClick={isAdhd ? () => onOpenStart("") : onStartCheckIn}>
-              {isAdhd ? <Plus size={16} /> : <Activity size={16} />}
-              {isAdhd ? "Start now" : "Check in"}
+            <button className="secondary-button secondary-button--auto" type="button" onClick={() => onOpenStart("")}>
+              <Plus size={16} />
+              Start now
             </button>
           </div>
         </div>
-        {isAdhd ? <Brain className="hero-leaf" size={92} aria-hidden="true" /> : <Leaf className="hero-leaf" size={92} aria-hidden="true" />}
+        <Brain className="hero-leaf" size={92} aria-hidden="true" />
       </article>
 
       <h3 className="home-section-heading">Quick actions</h3>
       <section className="home-action-grid" aria-label="Quick actions">
-        {isAdhd ? (
-          <HomeAction
-            icon={Brain}
-            title="Focus coach"
-            copy="Name the task, lower the friction, and pick one visible action."
-            action="Coach"
-            onClick={() => onOpenChatMode("Focus")}
-          />
-        ) : (
-          <HomeAction
-            icon={MessageCircle}
-            title="How are you feeling?"
-            copy={latestCheckIn ? `Last check-in: ${latestCheckIn.primaryEmotion || "logged"}` : "Talk, check in, or get support."}
-            action="Support"
-            onClick={() => onOpenChatMode("Support")}
-          />
-        )}
+        <HomeAction
+          icon={MessageCircle}
+          title="How are you feeling?"
+          copy={latestCheckIn ? `Last check-in: ${latestCheckIn.primaryEmotion || "logged"}` : "Talk, check in, or get support."}
+          action="Support"
+          onClick={() => onOpenChatMode("Support")}
+        />
+        <HomeAction
+          icon={Activity}
+          title="Check in"
+          copy="Log mood, stress, sleep, and what support would help."
+          action="Check in"
+          onClick={onStartCheckIn}
+        />
         <HomeAction
           icon={RotateHomeIcon}
           title="What are you avoiding?"
-          copy={isAdhd ? "Treat procrastination as a signal, not a character flaw." : "Blend emotional support with an executive-function unblock."}
+          copy="Blend emotional support with an executive-function unblock."
           action="Unblock"
           onClick={() => onOpenChatMode("Unblock")}
         />
         <HomeAction
-          icon={isAdhd ? FileCheck2 : Plus}
-          title={isAdhd ? "Magic task list" : "Start a 5-minute task"}
-          copy={isAdhd ? "Break one task into visible tiny steps." : "Pick the smallest visible action and begin."}
-          action={isAdhd ? "Tasks" : "Start"}
-          onClick={isAdhd ? onOpenTasks : () => onOpenStart("")}
+          icon={FileCheck2}
+          title="Magic task list"
+          copy="Break one task into visible tiny steps."
+          action="Tasks"
+          onClick={onOpenTasks}
+        />
+        <HomeAction
+          icon={Plus}
+          title="Start a 5-minute task"
+          copy="Pick the smallest visible action and begin."
+          action="Start"
+          onClick={() => onOpenStart("")}
         />
         <HomeAction
           icon={CheckCircle2}
@@ -2289,7 +2243,7 @@ function PhoneInstallHint({ canUseNativeInstallPrompt, onInstall, onDismiss }) {
   return (
     <aside className="phone-install-hint" aria-label="Install Kin">
       <div className="phone-install-hint__icon">
-        <Leaf size={20} />
+        <CoachLogo className="brand-logo" size={28} />
       </div>
       <div className="phone-install-hint__copy">
         <strong>Add Kin to your Home Screen</strong>
@@ -2434,24 +2388,34 @@ function useStoredState(key, fallback) {
 
 function getInitialActiveTab() {
   const storedActiveTab = readStorage(storageKeys.activeTab, "");
-  if (validTabIds.has(storedActiveTab)) return storedActiveTab;
-
   const activeSpace = normalizeAppSpace(readStorage(storageKeys.activeAppSpace, appSpaceIds.wellness));
   const storedTabs = createDefaultAppSpaceTabs(readStorage(storageKeys.appSpaceTabs, createDefaultAppSpaceTabs()));
   const storedSpaceTab = storedTabs[activeSpace];
-  return validTabIds.has(storedSpaceTab) ? storedSpaceTab : "Home";
+  return deriveUnifiedNavigationState({ activeTab: storedActiveTab || storedSpaceTab }).activeTab;
+}
+
+function getInitialToolView() {
+  const storedActiveTab = readStorage(storageKeys.activeTab, "");
+  const activeSpace = normalizeAppSpace(readStorage(storageKeys.activeAppSpace, appSpaceIds.wellness));
+  const storedTabs = createDefaultAppSpaceTabs(readStorage(storageKeys.appSpaceTabs, createDefaultAppSpaceTabs()));
+  const storedSpaceTab = storedTabs[activeSpace];
+  return deriveUnifiedNavigationState({
+    activeTab: storedActiveTab || storedSpaceTab,
+    activeToolView: readStorage(storageKeys.activeToolView, ""),
+  }).activeToolView;
 }
 
 function hasStoredNavigationState() {
   return Boolean(
     readStorage(storageKeys.activeTab, "") ||
       readStorage(storageKeys.activeAppSpace, "") ||
-      readStorage(storageKeys.appSpaceTabs, null),
+      readStorage(storageKeys.appSpaceTabs, null) ||
+      readStorage(storageKeys.activeToolView, ""),
   );
 }
 
 function getPageScrollKey(appSpace, tab) {
-  return `${normalizeAppSpace(appSpace)}:${validTabIds.has(tab) ? tab : "Home"}`;
+  return `${normalizeAppSpace(appSpace)}:${isValidUnifiedTabId(tab) ? tab : "Home"}`;
 }
 
 function getWindowScrollTop() {

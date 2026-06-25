@@ -25,8 +25,8 @@ export const dataCategories = [
   },
   {
     key: "messages",
-    label: "Legacy coach messages",
-    purpose: "Keeps older local conversation history for continuity after upgrades.",
+    label: "Coach messages",
+    purpose: "Keeps unified Coach conversation history for emotional support, focus, grounding, goals, and task-start continuity.",
     required: false,
     userCanDelete: true,
     usedForAiPersonalization: true,
@@ -35,8 +35,8 @@ export const dataCategories = [
   },
   {
     key: "wellnessMessages",
-    label: "Wellness chat messages",
-    purpose: "Keeps Wellness app conversation history for emotional support, grounding, journaling, and coping continuity.",
+    label: "Legacy wellness chat messages",
+    purpose: "Preserves older Wellness conversation history for encrypted sync and upgrade compatibility.",
     required: false,
     userCanDelete: true,
     usedForAiPersonalization: true,
@@ -45,8 +45,8 @@ export const dataCategories = [
   },
   {
     key: "adhdMessages",
-    label: "ADHD coach messages",
-    purpose: "Keeps ADHD app conversation history for focus, goals, task starts, planning, and no-shame recovery continuity.",
+    label: "Legacy focus coach messages",
+    purpose: "Preserves older ADHD / Focus conversation history for encrypted sync and upgrade compatibility.",
     required: false,
     userCanDelete: true,
     usedForAiPersonalization: true,

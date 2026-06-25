@@ -137,7 +137,7 @@ function buildReflection(text, mood, latestCheckIn, memory, supportModes = [], a
   if (latestCheckIn?.primaryEmotion) {
     return `I am hearing ${latestCheckIn.primaryEmotion.toLowerCase()} in what you wrote.${bridgeLine}`;
   }
-  if (activeAppSpace === appSpaceIds.adhd) return `I am reading this from the ADHD / Focus side, so we can turn it into a smaller next action.${bridgeLine}`;
+  if (activeAppSpace === appSpaceIds.adhd) return `I am reading this in Focus mode, so we can turn it into a smaller next action.${bridgeLine}`;
   if (clean.length < 80) return `I am hearing that there is something here worth slowing down with.${bridgeLine}`;
   return `I am hearing a mix of pressure and meaning in what you shared.${bridgeLine}`;
 }
@@ -163,10 +163,10 @@ function buildBridgeLine(activeAppSpace, bridgeContext) {
   const missedGoal = bridgeContext.sharedSignals.missedGoals?.[0];
   const recentStart = bridgeContext.sharedSignals.recentStart?.[0];
   if (activeAppSpace === appSpaceIds.wellness && missedGoal?.title) {
-    return ` Your ADHD side shows "${missedGoal.title}" may need no-shame recovery rather than more pressure.`;
+    return ` "${missedGoal.title}" may need no-shame recovery rather than more pressure.`;
   }
   if (activeAppSpace === appSpaceIds.adhd && bridgeContext.sharedSignals.latestMood) {
-    return ` Your Wellness side shows ${String(bridgeContext.sharedSignals.latestMood).toLowerCase()} may be part of the load.`;
+    return ` ${String(bridgeContext.sharedSignals.latestMood).toLowerCase()} may be part of the load.`;
   }
   if (activeAppSpace === appSpaceIds.adhd && recentStart?.task) {
     return ` Your recent Start history points to "${recentStart.task}" as a useful place to begin.`;
