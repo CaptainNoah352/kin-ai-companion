@@ -20,6 +20,7 @@ export const storageKeys = {
   installHintDismissed: "installHintDismissed",
   activeAppSpace: "activeAppSpace",
   activeTab: "activeTab",
+  activeToolView: "activeToolView",
   pageScroll: "pageScroll",
   appSpaceTabs: "appSpaceTabs",
   wellnessMessages: "wellnessMessages",

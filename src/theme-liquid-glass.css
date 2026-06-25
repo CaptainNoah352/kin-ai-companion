@@ -1054,6 +1054,64 @@ input[type="radio"] {
 }
 .diary-entry .icon-text-button { justify-self: start; }
 
+/* journal entry three-dots (overflow) menu */
+.diary-entry__menu-wrap {
+  position: relative;
+  align-self: center;
+}
+.diary-entry__menu-wrap--alone {
+  margin-left: auto;
+}
+.diary-entry__menu-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.diary-entry__menu-button:hover,
+.diary-entry__menu-button[aria-expanded="true"] {
+  border-color: var(--glass-border);
+  background: var(--glass-row);
+  color: var(--space-accent-text);
+}
+.diary-entry__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--glass-highlight);
+}
+.diary-entry__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 11px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+.diary-entry__menu-item--danger { color: #ff8a84; }
+.diary-entry__menu-item--danger:hover { background: rgba(238, 97, 91, 0.16); }
+
 /* ---------------------------------------------------------------------
    8e. Tools — see everything, tap to open
    --------------------------------------------------------------------- */

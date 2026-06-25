@@ -108,15 +108,11 @@ function summarizeTaskState(state) {
 export function buildAppSpacePromptContext({ activeAppSpace = appSpaceIds.wellness, bridgeContext } = {}) {
   const active = normalizeAppSpace(activeAppSpace);
   const label = appSpaceMeta[active].label;
-  const role =
-    active === appSpaceIds.adhd
-      ? "You are in Kin's ADHD / Focus app space. Prioritize executive-function support, task starts, planning, no-shame recovery, and focus scaffolding."
-      : "You are in Kin's Wellness app space. Prioritize emotional support, grounding, journaling, coping tools, and reflective care.";
 
   return [
-    `Active app space: ${label}.`,
-    role,
-    "Kin has two connected app spaces. Use the bridge context lightly so Wellness and ADHD support can coordinate without dumping raw history.",
+    `Legacy app-space context: ${label}.`,
+    "Kin now uses one unified Coach surface. Blend emotional support, grounding, executive-function support, task starts, planning, goals, and no-shame recovery based on the user's selected mode and message.",
+    "Use the bridge context lightly for continuity without dumping raw history or referring to separate app sides.",
     `Bridge context JSON: ${JSON.stringify(bridgeContext || {})}.`,
   ].join("\n");
 }

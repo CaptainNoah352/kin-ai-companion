@@ -50,7 +50,8 @@ test("app space prompt context names the active space and bridge context", () =>
     bridgeContext: { sharedSignals: { latestMood: "Anxious" } },
   });
 
-  assert.match(context, /ADHD \/ Focus/);
+  assert.match(context, /Legacy app-space context/);
+  assert.match(context, /unified Coach surface/);
   assert.match(context, /executive-function/i);
   assert.match(context, /Bridge context JSON/);
 });

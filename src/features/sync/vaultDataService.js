@@ -1,4 +1,5 @@
 import { listStoredKinData, readStorage, storageKeys, writeStorage } from "../../lib/storage.js";
+import { seedUnifiedCoachMessages } from "../aiCoach/coachHistoryMigration.js";
 
 export const driveSyncDefaults = {
   enabled: false,
@@ -84,17 +85,25 @@ export function restoreKinDataFromVault(kinData = {}) {
 }
 
 export function mergeUnsyncedLocalChatData(vaultKinData = {}, localKinData = {}) {
+  const wellnessMessages = chooseLongerChatHistory(
+    vaultKinData[storageKeys.wellnessMessages] ?? vaultKinData[storageKeys.messages],
+    localKinData[storageKeys.wellnessMessages] ?? localKinData[storageKeys.messages],
+  );
+  const adhdMessages = chooseLongerChatHistory(
+    vaultKinData[storageKeys.adhdMessages],
+    localKinData[storageKeys.adhdMessages],
+  );
+  const messages = seedUnifiedCoachMessages({
+    messages: chooseLongerChatHistory(vaultKinData[storageKeys.messages], localKinData[storageKeys.messages]),
+    wellnessMessages,
+    adhdMessages,
+  });
+
   return {
     ...vaultKinData,
-    [storageKeys.messages]: chooseLongerChatHistory(vaultKinData[storageKeys.messages], localKinData[storageKeys.messages]),
-    [storageKeys.wellnessMessages]: chooseLongerChatHistory(
-      vaultKinData[storageKeys.wellnessMessages] ?? vaultKinData[storageKeys.messages],
-      localKinData[storageKeys.wellnessMessages] ?? localKinData[storageKeys.messages],
-    ),
-    [storageKeys.adhdMessages]: chooseLongerChatHistory(
-      vaultKinData[storageKeys.adhdMessages],
-      localKinData[storageKeys.adhdMessages],
-    ),
+    [storageKeys.messages]: messages,
+    [storageKeys.wellnessMessages]: wellnessMessages,
+    [storageKeys.adhdMessages]: adhdMessages,
   };
 }
 

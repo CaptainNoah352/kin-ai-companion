@@ -155,4 +155,24 @@ test("local vault restore preserves longer unsynced local chat histories", () =>
     { role: "assistant", content: "new reply before force close" },
   ]);
   assert.deepEqual(merged[storageKeys.adhdMessages], [{ role: "user", content: "saved adhd chat" }]);
+  assert.deepEqual(merged[storageKeys.messages], [
+    { role: "user", content: "older saved chat" },
+    { role: "assistant", content: "new reply before force close" },
+    { role: "user", content: "saved adhd chat" },
+  ]);
+});
+
+test("local vault restore seeds unified coach messages from legacy histories", () => {
+  const merged = mergeUnsyncedLocalChatData(
+    {
+      [storageKeys.wellnessMessages]: [{ role: "user", content: "saved wellness chat" }],
+      [storageKeys.adhdMessages]: [{ role: "assistant", content: "saved focus chat" }],
+    },
+    {},
+  );
+
+  assert.deepEqual(merged[storageKeys.messages], [
+    { role: "user", content: "saved wellness chat" },
+    { role: "assistant", content: "saved focus chat" },
+  ]);
 });
